@@ -1,7 +1,7 @@
 <html>
 	<head>
 		<script src="prism.js"></script>
-		<script src="shaders.js"></script>
+		<img id="skin" src="skin.png">
 		<style>
 			#canvas
 			{
@@ -10,6 +10,7 @@
 		</style>
 	</head>
 	<body onload="init();" onresize="realign();">
+		<canvas id="skinCanvas" width="128px" height="128px"></canvas>
 		<canvas  id="canvas" width="500px" height="500px"></canvas>
 	</body>
 </html>
