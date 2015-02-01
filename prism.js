@@ -1,5 +1,6 @@
 var skin = []; // binary array
 
+// consider doing this in WebGL
 document.getElementById("skin").onload = function() {
     var c = document.getElementById("skinCanvas");
     var ctx = c.getContext("2d");
@@ -39,22 +40,31 @@ function realign()
 
 var vertexShaderSource = "\n\
 attribute vec2 position;\n\
-attribute vec2 aTextureCoord;\n\
-varying highp vec2 vTextureCoord;\n\
+attribute lowp float tone;\n\
+varying lowp float whatevs;\n\
 \n\
-void main(void) {\n\
+void main() {\n\
 gl_Position = vec4(position, 0., 1.);\n\
-vTextureCoord = aTextureCoord;\n\
+whatevs = tone;\n\
 }";
 
 var fragmentShaderSource = "\n\
-precision mediump float;\n\
-varying highp vec2 vTextureCoord;\n\
-uniform sampler2D sampler;\n\
+varying lowp float whatevs;\n\
 \n\
-void main(void) {\n\
-gl_FragColor = texture2D(sampler, vec2(vTextureCoord.s/2.-.5, vTextureCoord.t/2.-.5));\n\
+void main() {\n\
+gl_FragColor = vec4(whatevs,whatevs,whatevs,1.);\n\
 }";
+
+// Could do this kind of thing:
+// var alphabet1 = 0;
+// var alphabet2 = 26;
+// var boxDrawing1 = 52;
+// var boxDrawing2 = ...;
+// var pattern1 = ...;
+// var pattern2 = ...;
+// var punctuation = ...;
+//
+// and then (somehow) generate these Key variables.
 
 var aKey = {index:1, shiftIndex:27, keyCode:65};
 var bKey = {index:2, shiftIndex:28, keyCode:66};
@@ -64,8 +74,8 @@ var eKey = {index:5, shiftIndex:31, keyCode:69};
 var fKey = {index:6, shiftIndex:32, keyCode:70};
 var gKey = {index:7, shiftIndex:33, keyCode:71};
 var hKey = {index:8, shiftIndex:34, keyCode:72};
-var iKey = {index:9, shiftIndex:35, keyCode:73}; //problum
-var jKey = {index:10, shiftIndex:36, keyCode:74}; //problum
+var iKey = {index:9, shiftIndex:35, keyCode:73}; 
+var jKey = {index:10, shiftIndex:36, keyCode:74}; 
 var kKey = {index:11, shiftIndex:37, keyCode:75};
 var lKey = {index:12, shiftIndex:38, keyCode:76};
 var mKey = {index:13, shiftIndex:39, keyCode:77};
@@ -78,7 +88,7 @@ var sKey = {index:19, shiftIndex:45, keyCode:83};
 var tKey = {index:20, shiftIndex:46, keyCode:84};
 var uKey = {index:21, shiftIndex:47, keyCode:85};
 var vKey = {index:22, shiftIndex:48, keyCode:86};
-var wKey = {index:23, shiftIndex:49, keyCode:87};// probably more problems
+var wKey = {index:23, shiftIndex:49, keyCode:87};
 var xKey = {index:24, shiftIndex:50, keyCode:88};
 var yKey = {index:25, shiftIndex:51, keyCode:89};
 var zKey = {index:26, shiftIndex:52, keyCode:90};
@@ -109,7 +119,7 @@ function print(index)
 	currentPosition++;
 }
 
-function delete()
+function deleteChar()
 {
 	charArray[currentPosition] = 0;
 	currentPosition--;
@@ -121,14 +131,14 @@ function init()
 	var canvas = document.getElementById("canvas");
 	gl = canvas.getContext("experimental-webgl");
 	gl.clearColor(0.97, 0.97, 0.97, 1.0);
-	initTexture();
-	initProgram();
 	initBuffers();
+	initProgram();
 	animate();
 }
 
 var _position = null;
-var texturePointer = null;
+var _b = null;
+var _uniform = null;
 
 function initProgram()
 {
@@ -150,34 +160,32 @@ function initProgram()
 	gl.linkProgram(shaderProgram);
 	
 	_position = gl.getAttribLocation(shaderProgram, "position");
+	_b = gl.getAttribLocation(shaderProgram, "tone");
 	
-	texturePointer = gl.getAttribLocation(shaderProgram, "aTextureCoord");
+	gl.useProgram(shaderProgram);	
 	
 	gl.enableVertexAttribArray(_position);
-	gl.enableVertexAttribArray(texturePointer);
-	
-	gl.useProgram(shaderProgram);
-	
-	gl.uniform1i(gl.getUniformLocation(shaderProgram, "sampler"), 0);
+	gl.enableVertexAttribArray(_b);
 }
 
 var VBO = null;
 var IBO = null;
 
-function initBuffers()
-{
-	var triangleVertex = [
+var triangleVertex = [
 		-1, -1,
 		1, -1,
 		1, 1,
-		-1, 1
-	];
+		-1, 1,
+		.8, .2, 0.3, 1
+];
 	
-	var triangleFaces = [
+var triangleFaces = [
 		0, 1, 2,
 		0, 2, 3
-	];
-	
+];
+
+function initBuffers()
+{
 	VBO = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, VBO);
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVertex), gl.STATIC_DRAW);
@@ -186,38 +194,15 @@ function initBuffers()
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, IBO);
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(triangleFaces), gl.STATIC_DRAW);
 }
-var _texture;
 
-function initTexture()
-{
-	_texture = gl.createTexture();
-	_texture.image = new Image();
-	_texture.image.onload = function() {
-		handleLoadedTexture(_texture);
-	}
-	_texture.image.crossOrigin = "anonymous";
-	_texture.image.src = "skin.png";
-}
-	
-function handleLoadedTexture(texture)
-{
-	gl.bindTexture(gl.TEXTURE_2D, texture);
-	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);	
-}
-
+// make this not update all the time.
 function animate()
 {
 	clear(gl);
-	
+
 	gl.bindBuffer(gl.ARRAY_BUFFER, VBO);
-	gl.vertexAttribPointer(_position, 2, gl.FLOAT, false, 4*2, 0);
-	gl.vertexAttribPointer(texturePointer, 2, gl.FLOAT, false, 0, 0);
-	
-	gl.activeTexture(gl.TEXTURE0)
-	gl.bindTexture(gl.TEXTURE_2D, _texture);
+	gl.vertexAttribPointer(_position, 2, gl.FLOAT, gl.FALSE, 4*2, 0);
+	gl.vertexAttribPointer(_b, 1, gl.FLOAT, gl.FALSE, 4, 32);
 	
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, IBO);
 	gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
@@ -469,10 +454,10 @@ function checkKey(e)
 		case 46:{ // Delete
 			if (e.shiftKey)
 			{
-				delete();delete();delete();delete();delete();
+				deleteChar();deleteChar();deleteChar();deleteChar();deleteChar();
 				return;
 			}
-			delte();
+			deleteChar();
 			return;
 		}
 	}
