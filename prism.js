@@ -1,5 +1,6 @@
 var skin = []; // binary array
 
+// consider doing this in WebGL
 document.getElementById("skin").onload = function() {
     var c = document.getElementById("skinCanvas");
     var ctx = c.getContext("2d");
@@ -56,6 +57,17 @@ void main(void) {\n\
 gl_FragColor = texture2D(sampler, vec2(vTextureCoord.s/2.-.5, vTextureCoord.t/2.-.5));\n\
 }";
 
+// Could do this kind of thing:
+// var alphabet1 = 0;
+// var alphabet2 = 26;
+// var boxDrawing1 = 52;
+// var boxDrawing2 = ...;
+// var pattern1 = ...;
+// var pattern2 = ...;
+// var punctuation = ...;
+//
+// and then (somehow) generate these Key variables.
+
 var aKey = {index:1, shiftIndex:27, keyCode:65};
 var bKey = {index:2, shiftIndex:28, keyCode:66};
 var cKey = {index:3, shiftIndex:29, keyCode:67};
@@ -64,8 +76,8 @@ var eKey = {index:5, shiftIndex:31, keyCode:69};
 var fKey = {index:6, shiftIndex:32, keyCode:70};
 var gKey = {index:7, shiftIndex:33, keyCode:71};
 var hKey = {index:8, shiftIndex:34, keyCode:72};
-var iKey = {index:9, shiftIndex:35, keyCode:73}; //problum
-var jKey = {index:10, shiftIndex:36, keyCode:74}; //problum
+var iKey = {index:9, shiftIndex:35, keyCode:73}; 
+var jKey = {index:10, shiftIndex:36, keyCode:74}; 
 var kKey = {index:11, shiftIndex:37, keyCode:75};
 var lKey = {index:12, shiftIndex:38, keyCode:76};
 var mKey = {index:13, shiftIndex:39, keyCode:77};
@@ -78,7 +90,7 @@ var sKey = {index:19, shiftIndex:45, keyCode:83};
 var tKey = {index:20, shiftIndex:46, keyCode:84};
 var uKey = {index:21, shiftIndex:47, keyCode:85};
 var vKey = {index:22, shiftIndex:48, keyCode:86};
-var wKey = {index:23, shiftIndex:49, keyCode:87};// probably more problems
+var wKey = {index:23, shiftIndex:49, keyCode:87};
 var xKey = {index:24, shiftIndex:50, keyCode:88};
 var yKey = {index:25, shiftIndex:51, keyCode:89};
 var zKey = {index:26, shiftIndex:52, keyCode:90};
@@ -109,7 +121,7 @@ function print(index)
 	currentPosition++;
 }
 
-function delete()
+function deleteChar()
 {
 	charArray[currentPosition] = 0;
 	currentPosition--;
@@ -469,10 +481,10 @@ function checkKey(e)
 		case 46:{ // Delete
 			if (e.shiftKey)
 			{
-				delete();delete();delete();delete();delete();
+				deleteChar();deleteChar();deleteChar();deleteChar();deleteChar();
 				return;
 			}
-			delte();
+			deleteChar();
 			return;
 		}
 	}

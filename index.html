@@ -1,16 +1,33 @@
 <html>
-	<head>
+	<body onload="init();" onresize="realign();">
+		<style>#canvas { position: absolute; }</style>
+		<img id="skin" src="skin.png" style="display:none;">
+		<canvas id="skinCanvas" width="128px" height="128px" style="display:none;"></canvas>
+		<canvas  id="canvas" class="animate" width="500px" height="500px"></canvas>
 		<script src="prism.js"></script>
-		<img id="skin" src="skin.png">
 		<style>
-			#canvas
-			{
-				position: absolute;
+		.animate {
+				-webkit-animation-name: animate;
+				-webkit-animation-duration: 0.4s;
+				-webkit-animation-fill-mode: forwards;
+			}
+			
+			@-webkit-keyframes animate {
+				0% {
+					-webkit-transform:
+					translateY(5px);
+					opacity: .6;
+				}
+				
+				2% {
+					-webkit-transform:
+					translateY(2px);
+				}
+				
+				100% { 
+					opacity: 1;
+				}
 			}
 		</style>
-	</head>
-	<body onload="init();" onresize="realign();">
-		<canvas id="skinCanvas" width="128px" height="128px"></canvas>
-		<canvas  id="canvas" width="500px" height="500px"></canvas>
 	</body>
 </html>
