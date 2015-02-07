@@ -1,61 +1,15 @@
-var skin = []; // binary array
-
-// consider doing this in WebGL
-document.getElementById("skin").onload = function() {
-    var c = document.getElementById("skinCanvas");
-    var ctx = c.getContext("2d");
-    var img = document.getElementById("skin");
-    ctx.drawImage(img, 0, 0);
-    var imgData = ctx.getImageData(0, 0, c.width, c.height);
-
-    var i;
-	var k = 0;
-    var average;
-    for (i = 0; i < imgData.data.length; i += 4) {
-         average = (imgData.data[1]+imgData.data[i+1]+imgData.data[i+2])/3;
-        if (average>=128)
-        {
-            skin[i-(k*3)] = 1;
-        } else {
-			skin[i-(k*3)] = 0;
-		}
-		k++;
-    }
-}
-
-var gl = null;
-
-var canvasWidth = 500;
-var canvasHeight = 500;
+var terminalWidth = 500;
+var terminalHeight = 500;
 
 function realign()
 {
 	var w = window.innerWidth;
 	var h = window.innerHeight;
 	
-	var canvas = document.getElementById("canvas");
-	canvas.style.top = ((h / 2) - (canvasWidth / 2)) + "px";
-	canvas.style.left = ((w / 2) - (canvasHeight / 2)) + "px";
+	var terminal = document.getElementById("terminal");
+	terminal.style.top = ((h / 2) - (terminalWidth / 2)) + "px";
+	terminal.style.left = ((w / 2) - (terminalHeight / 2)) + "px";
 }
-
-var vertexShaderSource = "\n\
-attribute vec2 position;\n\
-attribute vec2 aTextureCoord;\n\
-varying highp vec2 vTextureCoord;\n\
-\n\
-void main(void) {\n\
-gl_Position = vec4(position, 0., 1.);\n\
-vTextureCoord = aTextureCoord;\n\
-}";
-
-var fragmentShaderSource = "\n\
-precision mediump float;\n\
-varying highp vec2 vTextureCoord;\n\
-uniform sampler2D sampler;\n\
-\n\
-void main(void) {\n\
-gl_FragColor = texture2D(sampler, vec2(vTextureCoord.s/2.-.5, vTextureCoord.t/2.-.5));\n\
-}";
 
 // Could do this kind of thing:
 // var alphabet1 = 0;
@@ -101,6 +55,7 @@ var charY = 12;
 var map = [];
 var count = 1;
 var coord = {x:0, y:0};
+
 for (var i=0; i<16; i++)
 {
 	for (var j=0; j<10; j++)
@@ -125,117 +80,6 @@ function deleteChar()
 {
 	charArray[currentPosition] = 0;
 	currentPosition--;
-}
-
-function init() 
-{
-	realign();
-	var canvas = document.getElementById("canvas");
-	gl = canvas.getContext("experimental-webgl");
-	gl.clearColor(0.97, 0.97, 0.97, 1.0);
-	initTexture();
-	initProgram();
-	initBuffers();
-	animate();
-}
-
-var _position = null;
-var texturePointer = null;
-
-function initProgram()
-{
-	var getShader = function(source, type) {
-		var shader = gl.createShader(type);
-		gl.shaderSource(shader, source);
-		gl.compileShader(shader);
-		return shader;
-	};
-	
-	var vertexShader = getShader(vertexShaderSource, gl.VERTEX_SHADER);
-	
-	var fragmentShader = getShader(fragmentShaderSource, gl.FRAGMENT_SHADER);
-	
-	var shaderProgram = gl.createProgram();
-	gl.attachShader(shaderProgram, vertexShader);
-	gl.attachShader(shaderProgram, fragmentShader);
-	
-	gl.linkProgram(shaderProgram);
-	
-	_position = gl.getAttribLocation(shaderProgram, "position");
-	
-	texturePointer = gl.getAttribLocation(shaderProgram, "aTextureCoord");
-	
-	gl.enableVertexAttribArray(_position);
-	gl.enableVertexAttribArray(texturePointer);
-	
-	gl.useProgram(shaderProgram);
-	
-	gl.uniform1i(gl.getUniformLocation(shaderProgram, "sampler"), 0);
-}
-
-var VBO = null;
-var IBO = null;
-
-function initBuffers()
-{
-	var triangleVertex = [
-		-1, -1,
-		1, -1,
-		1, 1,
-		-1, 1
-	];
-	
-	var triangleFaces = [
-		0, 1, 2,
-		0, 2, 3
-	];
-	
-	VBO = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, VBO);
-	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVertex), gl.STATIC_DRAW);
-
-	IBO = gl.createBuffer();
-	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, IBO);
-	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(triangleFaces), gl.STATIC_DRAW);
-}
-var _texture;
-
-function initTexture()
-{
-	_texture = gl.createTexture();
-	_texture.image = new Image();
-	_texture.image.onload = function() {
-		handleLoadedTexture(_texture);
-	}
-	_texture.image.crossOrigin = "anonymous";
-	_texture.image.src = "skin.png";
-}
-	
-function handleLoadedTexture(texture)
-{
-	gl.bindTexture(gl.TEXTURE_2D, texture);
-	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);	
-}
-
-function animate()
-{
-	clear(gl);
-	
-	gl.bindBuffer(gl.ARRAY_BUFFER, VBO);
-	gl.vertexAttribPointer(_position, 2, gl.FLOAT, false, 4*2, 0);
-	gl.vertexAttribPointer(texturePointer, 2, gl.FLOAT, false, 0, 0);
-	
-	gl.activeTexture(gl.TEXTURE0)
-	gl.bindTexture(gl.TEXTURE_2D, _texture);
-	
-	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, IBO);
-	gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
-	gl.flush();
-	
-	window.requestAnimationFrame(animate);
 }
 	
 window.onkeydown = checkKey;
@@ -488,11 +332,5 @@ function checkKey(e)
 			return;
 		}
 	}
-}
-
-function clear(ctx) 
-{
-	ctx.viewport(0, 0, canvasWidth, canvasHeight);
-	ctx.clear(ctx.COLOR_BUFFER_BIT);
 }
 
