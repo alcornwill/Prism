@@ -15,6 +15,7 @@ function init()
 {
 	realign();
 	constructTerminal();
+	setInterval(drawCursor(), 500);
 }
 
 var charX = 52;
@@ -30,17 +31,10 @@ function constructTerminal()
 		matrix[y] = [];
 		for (var x=0; x<charX; x++)
 		{
-			matrix[y][x] = ' ';
+			matrix[y][x] = '';
 		}
 	}
-	
-	for (var y=0; y<charY; y++)
-	{
-		var node = document.createElement("DIV");
-		var textNode = document.createTextNode(getLine(y));
-		node.appendChild(textNode);
-		terminal.appendChild(node);
-	}
+	draw();
 }
 
 function getLine(y)
@@ -56,11 +50,20 @@ function getLine(y)
 
 function update()
 {
+	clear();
+	draw();
+}
+
+function clear()
+{
 	while (terminal.firstChild)
 	{
 		terminal.removeChild(terminal.firstChild);
 	}
-	
+}
+
+function draw()
+{
 	for (var y=0; y<charY; y++)
 	{
 		var node = document.createElement("DIV");
@@ -79,19 +82,56 @@ var cursor = vec(0, 0);
 
 function print(ch)
 {
-	matrix[cursor.y][cursor.x] = ch;
-	if (cursor.x == charX)
+	if (!(cursor.x<charX))
 	{
 		cursor.x = 0;
 		cursor.y++;
 	}
+	matrix[cursor.y][cursor.x] = ch;
 	cursor.x++;
 	update();
 }
 
 function deleteChar()
 {
+	if (cursor.x==0)
+	{
+		if (cursor.y==0)
+		{
+		} else {
+			cursor.y--;
+			cursor.x=findNotNull(cursor.y);
+		}
+	} else {
+		cursor.x--;
+		matrix[cursor.y][cursor.x] = '';
+	}
+	update();
+}
 
+function findNotNull(line)
+{
+	for (var x=charX-1; x>0; x--)
+	{
+		if (matrix[line][x]!='')
+		{
+			return x+1;
+		}
+	}
+}
+
+function newLine()
+{
+	if (cursor.y<charY)
+	{
+		cursor.x=0;
+		cursor.y++;
+	}
+}
+
+function drawCursor()
+{
+	console.log("cursor");
 }
 
 // Could do this kind of thing:
@@ -136,6 +176,7 @@ window.onkeydown = checkKey;
 
 function checkKey(e)
 {
+	e.preventDefault();
 	switch(e.keyCode)
 	{
 		case aKey.keyCode:{
@@ -372,17 +413,16 @@ function checkKey(e)
 			print(zKey.ch);
 			return;
 		}
-		case 46:{ // Delete
-			if (e.shiftKey)
-			{
-				deleteChar();deleteChar();deleteChar();deleteChar();deleteChar();
-				return;
-			}
+		case 8:{ // Backspace
 			deleteChar();
 			return;
 		}
 		case 32:{ // Space
-		    print(' ');
+		    print('\u00a0');
+			return;
+		}
+		case 13:{ // Enter
+			newLine();
 			return;
 		}
 	}
