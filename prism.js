@@ -5,10 +5,93 @@ function realign()
 {
 	var w = window.innerWidth;
 	var h = window.innerHeight;
-	
 	var terminal = document.getElementById("terminal");
+	
 	terminal.style.top = ((h / 2) - (terminalWidth / 2)) + "px";
 	terminal.style.left = ((w / 2) - (terminalHeight / 2)) + "px";
+}
+
+function init()
+{
+	realign();
+	constructTerminal();
+}
+
+var charX = 52;
+var charY = 28;
+
+var matrix = [];
+
+
+function constructTerminal()
+{
+	for (var y=0; y<charY; y++)
+	{
+		matrix[y] = [];
+		for (var x=0; x<charX; x++)
+		{
+			matrix[y][x] = ' ';
+		}
+	}
+	
+	for (var y=0; y<charY; y++)
+	{
+		var node = document.createElement("DIV");
+		var textNode = document.createTextNode(getLine(y));
+		node.appendChild(textNode);
+		terminal.appendChild(node);
+	}
+}
+
+function getLine(y)
+{
+	var line = "";
+	for (var x=0; x<charX; x++)
+	{
+		line += matrix[y][x];
+	}
+	
+	return line;
+}
+
+function update()
+{
+	while (terminal.firstChild)
+	{
+		terminal.removeChild(terminal.firstChild);
+	}
+	
+	for (var y=0; y<charY; y++)
+	{
+		var node = document.createElement("DIV");
+		var textNode = document.createTextNode(getLine(y));
+		node.appendChild(textNode);
+		terminal.appendChild(node);
+	}
+}
+
+function vec(x, y)
+{
+	return {x: x, y: y};
+}
+
+var cursor = vec(0, 0);
+
+function print(ch)
+{
+	matrix[cursor.y][cursor.x] = ch;
+	if (cursor.x == charX)
+	{
+		cursor.x = 0;
+		cursor.y++;
+	}
+	cursor.x++;
+	update();
+}
+
+function deleteChar()
+{
+
 }
 
 // Could do this kind of thing:
@@ -22,66 +105,33 @@ function realign()
 //
 // and then (somehow) generate these Key variables.
 
-var aKey = {index:1, shiftIndex:27, keyCode:65};
-var bKey = {index:2, shiftIndex:28, keyCode:66};
-var cKey = {index:3, shiftIndex:29, keyCode:67};
-var dKey = {index:4, shiftIndex:30, keyCode:68};
-var eKey = {index:5, shiftIndex:31, keyCode:69};
-var fKey = {index:6, shiftIndex:32, keyCode:70};
-var gKey = {index:7, shiftIndex:33, keyCode:71};
-var hKey = {index:8, shiftIndex:34, keyCode:72};
-var iKey = {index:9, shiftIndex:35, keyCode:73}; 
-var jKey = {index:10, shiftIndex:36, keyCode:74}; 
-var kKey = {index:11, shiftIndex:37, keyCode:75};
-var lKey = {index:12, shiftIndex:38, keyCode:76};
-var mKey = {index:13, shiftIndex:39, keyCode:77};
-var nKey = {index:14, shiftIndex:40, keyCode:78};
-var oKey = {index:15, shiftIndex:41, keyCode:79};
-var pKey = {index:16, shiftIndex:42, keyCode:80};
-var qKey = {index:17, shiftIndex:43, keyCode:81};
-var rKey = {index:18, shiftIndex:44, keyCode:82};
-var sKey = {index:19, shiftIndex:45, keyCode:83};
-var tKey = {index:20, shiftIndex:46, keyCode:84};
-var uKey = {index:21, shiftIndex:47, keyCode:85};
-var vKey = {index:22, shiftIndex:48, keyCode:86};
-var wKey = {index:23, shiftIndex:49, keyCode:87};
-var xKey = {index:24, shiftIndex:50, keyCode:88};
-var yKey = {index:25, shiftIndex:51, keyCode:89};
-var zKey = {index:26, shiftIndex:52, keyCode:90};
+var aKey = {ch:'a', shift:'A', keyCode:65};
+var bKey = {ch:'b', shift:'B', keyCode:66};
+var cKey = {ch:'c', shift:'C', keyCode:67};
+var dKey = {ch:'d', shift:'D', keyCode:68};
+var eKey = {ch:'e', shift:'E', keyCode:69};
+var fKey = {ch:'f', shift:'F', keyCode:70};
+var gKey = {ch:'g', shift:'G', keyCode:71};
+var hKey = {ch:'h', shift:'H', keyCode:72};
+var iKey = {ch:'i', shift:'I', keyCode:73}; 
+var jKey = {ch:'j', shift:'J', keyCode:74}; 
+var kKey = {ch:'k', shift:'K', keyCode:75};
+var lKey = {ch:'l', shift:'L', keyCode:76};
+var mKey = {ch:'m', shift:'M', keyCode:77};
+var nKey = {ch:'n', shift:'N', keyCode:78};
+var oKey = {ch:'o', shift:'O', keyCode:79};
+var pKey = {ch:'p', shift:'P', keyCode:80};
+var qKey = {ch:'q', shift:'Q', keyCode:81};
+var rKey = {ch:'r', shift:'R', keyCode:82};
+var sKey = {ch:'s', shift:'S', keyCode:83};
+var tKey = {ch:'t', shift:'T', keyCode:84};
+var uKey = {ch:'u', shift:'U', keyCode:85};
+var vKey = {ch:'v', shift:'V', keyCode:86};
+var wKey = {ch:'w', shift:'W', keyCode:87};
+var xKey = {ch:'x', shift:'X', keyCode:88};
+var yKey = {ch:'y', shift:'Y', keyCode:89};
+var zKey = {ch:'z', shift:'Z', keyCode:90};	
 
-var charX = 8;
-var charY = 12;
-
-var map = [];
-var count = 1;
-var coord = {x:0, y:0};
-
-for (var i=0; i<16; i++)
-{
-	for (var j=0; j<10; j++)
-	{
-		coord.x = i*charX;
-		coord.y = j*charY;
-		map[count] = coord;
-		count++;
-	}
-}
-
-var charArray = [];
-var currentPosition = 0;
-
-function print(index)
-{
-	charArray[currentPosition] = index;
-	currentPosition++;
-}
-
-function deleteChar()
-{
-	charArray[currentPosition] = 0;
-	currentPosition--;
-}
-	
 window.onkeydown = checkKey;
 
 function checkKey(e)
@@ -91,235 +141,235 @@ function checkKey(e)
 		case aKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(aKey.shiftIndex);
+				print(aKey.shift);
 				return;
 			}
-			print(aKey.index);		
+			print(aKey.ch);		
 			return;
 		}
 		case bKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(bKey.shiftIndex);
+				print(bKey.shift);
 				return;
 			}
-			print(bKey.index);
+			print(bKey.ch);
 			return;
 		}
 		case cKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(cKey.shiftIndex);
+				print(cKey.shift);
 				return;
 			}
-			print(cKey.index);
+			print(cKey.ch);
 			return;
 		}
 		case dKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(dKey.shiftIndex);
+				print(dKey.shift);
 				return;
 			}
-			print(dKey.index);
+			print(dKey.ch);
 			return;
 		}
 		case eKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(eKey.shiftIndex);
+				print(eKey.shift);
 				return;
 			}
-			print(eKey.index);
+			print(eKey.ch);
 			return;
 		}
 		case fKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(fKey.shiftIndex);
+				print(fKey.shift);
 				return;
 			}
-			print(fKey.index);
+			print(fKey.ch);
 			return;
 		}
 		case gKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(gKey.shiftIndex);
+				print(gKey.shift);
 				return;
 			}
-			print(gKey.index);
+			print(gKey.ch);
 			return;
 		}
 		case hKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(hKey.shiftIndex);
+				print(hKey.shift);
 				return;
 			}
-			print(hKey.index);
+			print(hKey.ch);
 			return;
 		}
 		case iKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(iKey.shiftIndex);
+				print(iKey.shift);
 				return;
 			}
-			print(iKey.index);
+			print(iKey.ch);
 			return;
 		}
 		case jKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(jKey.shiftIndex);
+				print(jKey.shift);
 				return;
 			}
-			print(jKey.index);
+			print(jKey.ch);
 			return;
 		}
 		case kKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(kKey.shiftIndex);
+				print(kKey.shift);
 				return;
 			}
-			print(kKey.index);
+			print(kKey.ch);
 			return;
 		}
 		case lKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(lKey.shiftIndex);
+				print(lKey.shift);
 				return;
 			}
-			print(lKey.index);
+			print(lKey.ch);
 			return;
 		}
 		case mKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(mKey.shiftIndex);
+				print(mKey.shift);
 				return;
 			}
-			print(mKey.index);
+			print(mKey.ch);
 			return;
 		}		
 		case nKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(nKey.shiftIndex);
+				print(nKey.shift);
 				return;
 			}
-			print(nKey.index);
+			print(nKey.ch);
 			return;
 		}
 		case oKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(oKey.shiftIndex);
+				print(oKey.shift);
 				return;
 			}
-			print(oKey.index);
+			print(oKey.ch);
 			return;
 		}
 		case pKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(pKey.shiftIndex);
+				print(pKey.shift);
 				return;
 			}
-			print(pKey.index);
+			print(pKey.ch);
 			return;
 		}
 		case qKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(qKey.shiftIndex);
+				print(qKey.shift);
 				return;
 			}
-			print(qKey.index);
+			print(qKey.ch);
 			return;
 		}
 		case rKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(rKey.shiftIndex);
+				print(rKey.shift);
 				return;
 			}
-			print(rKey.index);
+			print(rKey.ch);
 			return;
 		}
 		case sKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(sKey.shiftIndex);
+				print(sKey.shift);
 				return;
 			}
-			print(sKey.index);
+			print(sKey.ch);
 			return;
 		}
 		case tKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(tKey.shiftIndex);
+				print(tKey.shift);
 				return;
 			}
-			print(tKey.index);
+			print(tKey.ch);
 			return;
 		}
 		case uKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(uKey.shiftIndex);
+				print(uKey.shift);
 				return;
 			}
-			print(uKey.index);
+			print(uKey.ch);
 			return;
 		}
 		case vKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(vKey.shiftIndex);
+				print(vKey.shift);
 				return;
 			}
-			print(vKey.index);
+			print(vKey.ch);
 			return;
 		}
 		case wKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(wKey.shiftIndex);
+				print(wKey.shift);
 				return;
 			}
-			print(wKey.index);
+			print(wKey.ch);
 			return;
 		}
 		case xKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(xKey.shiftIndex);
+				print(xKey.shift);
 				return;
 			}
-			print(xKey.index);
+			print(xKey.ch);
 			return;
 		}
 		case yKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(yKey.shiftIndex);
+				print(yKey.shift);
 				return;
 			}
-			print(yKey.index);
+			print(yKey.ch);
 			return;
 		}
 		case zKey.keyCode:{
 			if (e.shiftKey)
 			{
-				print(zKey.shiftIndex);
+				print(zKey.shift);
 				return;
 			}
-			print(zKey.index);
+			print(zKey.ch);
 			return;
 		}
 		case 46:{ // Delete
@@ -329,6 +379,10 @@ function checkKey(e)
 				return;
 			}
 			deleteChar();
+			return;
+		}
+		case 32:{ // Space
+		    print(' ');
 			return;
 		}
 	}

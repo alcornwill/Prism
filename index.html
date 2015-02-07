@@ -1,12 +1,15 @@
 <html>
-	<body onload="realign();" onresize="realign();">
+	<body onload="init()" onresize="realign()">
 		<style>#terminal { 
 			position: absolute;
 			width: 500px;
 			height: 500px;	
+			white-space: nowrap;
+			overflow: hidden;
+			font-family: "Courier New";
 		}</style>
 		<script src="prism.js"></script>
-		<div id="terminal" class="animate">Hello TTHHhhhhhhhjklsdg</div>
+		<div id="terminal" class="animate"></div>
 		<style>
 		.animate {
 				-webkit-animation-name: animate;
