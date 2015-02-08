@@ -17,6 +17,7 @@ function init()
 	constructTerminal();
 	setInterval(toggleCursor, 500);
 	textEditorBindings();
+	drawBox();
 }
 
 var charX = 52;
@@ -31,7 +32,7 @@ function constructTerminal()
 		matrix[y] = [];
 		for (var x=0; x<charX; x++)
 		{
-			matrix[y][x] = '';
+			matrix[y][x] = '\u00a0';
 		}
 	}
 	draw();
@@ -45,8 +46,9 @@ function getLine(y)
 		if (cursor.x == x && cursor.y == y && cursorOn)
 		{
 			line += '\u2588';
+		} else {
+			line += matrix[y][x];
 		}
-		line += matrix[y][x];
 	}
 	
 	return line;
@@ -100,7 +102,10 @@ function print(ch)
 function vPrint(ch)
 {
 	matrix[cursor.y][cursor.x] = ch;
-	cursor.y++;
+	if (cursor.y!=charY-1)
+	{
+		cursor.y++;
+	}
 	update();
 }
 
@@ -112,20 +117,20 @@ function deleteChar()
 		{
 		} else {
 			cursor.y--;
-			cursor.x=findNotNull(cursor.y);
+			cursor.x=findText(cursor.y);
 		}
 	} else {
 		cursor.x--;
-		matrix[cursor.y][cursor.x] = '';
+		matrix[cursor.y][cursor.x] = '\u00a0';
 	}
 	update();
 }
 
-function findNotNull(line)
+function findText(line)
 {
 	for (var x=charX-1; x>0; x--)
 	{
-		if (matrix[line][x]!='')
+		if (matrix[line][x]!='\u00a0') // Needs thought.
 		{
 			return x+1;
 		}
@@ -159,8 +164,7 @@ function printAt(x, y, text)
 
 function drawLine(x, y, ch, length)
 {
-	cursor.x = x;
-	cursor.y = y;
+	moveCursor(x, y);
 	
 	for (var i=0; i<length; i++)
 	{
@@ -170,8 +174,7 @@ function drawLine(x, y, ch, length)
 
 function drawVLine(x, y, ch, length)
 {
-	cursor.x = x;
-	cursor.y = y;
+	moveCursor(x, y);
 	
 	for (var i=0; i<length; i++)
 	{
@@ -185,6 +188,25 @@ function toggleCursor()
 	? cursorOn = false
 	: cursorOn = true;
 	update();
+}
+
+function drawBox(x, y, width, height)
+{
+	drawLine(0, 0, '\u2500', charX);
+	drawVLine(0, 0, '\u2502', charY);
+	drawLine(0, charY-1, '\u2500', charX);
+	drawVLine(charX-1, 0, '\u2502', charY);
+	printAt(0, 0, '\u250C');
+	printAt(charX-1, 0, '\u2510');
+	printAt(0, charY-1, '\u2514');
+	printAt(charX-1, charY-1, '\u2518');
+	moveCursor(1, 1);
+}
+
+function moveCursor(x, y)
+{
+	cursor.x = x;
+	cursor.y = y;
 }
 
 // Could do this kind of thing:
@@ -267,7 +289,7 @@ function textEditorBindings()
 	keys[66] = key(
 	function(){print('b')},
 	function(){print('B')},
-	function(){printAt(20, 10, "Fanny Blast!")},
+	function(){},
 	function(){},
 	function(){},
 	function(){},
@@ -278,7 +300,7 @@ function textEditorBindings()
 	keys[67] = key(
 	function(){print('c')},
 	function(){print('C')},
-	function(){drawLine(0, 0, '\u2500', 10)},
+	function(){},
 	function(){},
 	function(){},
 	function(){},
@@ -289,7 +311,7 @@ function textEditorBindings()
 	keys[68] = key(
 	function(){print('d')},
 	function(){print('D')},
-	function(){drawVLine(0, 0, '\u2502', 10)},
+	function(){},
 	function(){},
 	function(){},
 	function(){},
