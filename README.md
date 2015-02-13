@@ -1,2 +1,2 @@
-# Prism
-Stupid WebGL experiment incoming
+# PunchDeck
+Stupid javascript text based user interface

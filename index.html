@@ -1,10 +1,16 @@
 <html>
-	<body onload="init();" onresize="realign();">
-		<style>#canvas { position: absolute; }</style>
-		<img id="skin" src="skin.png" style="display:none;">
-		<canvas id="skinCanvas" width="128px" height="128px" style="display:none;"></canvas>
-		<canvas  id="canvas" class="animate" width="500px" height="500px"></canvas>
-		<script src="prism.js"></script>
+	<body onload="console.init()" onresize="console.realign()">
+		<style>#console { 
+			position: absolute;
+			width: 500px;
+			height: 500px;	
+			white-space: nowrap;
+			overflow: hidden;
+			font-family: "Courier New";
+		}</style>
+		<script src="punchdeck.js"></script>
+		<script src="bindings.js"></script>
+		<div id="console" class="animate"></div>
 		<style>
 		.animate {
 				-webkit-animation-name: animate;
