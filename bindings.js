@@ -1,33 +1,36 @@
+var bindings = {};
+
 var keys = [];
 
-function key()
-{
-	this.normal = function(){fannyBlast()};
-	this.shift = function(){fannyBlast()};
-	this.alt = function(){fannyBlast()};
-	this.ctrl = function(){fannyBlast()};
-	this.shiftAlt = function(){fannyBlast()};
-	this.shiftCtrl = function(){fannyBlast()};
-	this.altCtrl = function(){fannyBlast()};
-	this.shiftAltCtrl = function(){fannyBlast()};
+function key() {
+	this.normal = function(){doNothing()};
+	this.shift = function(){doNothing()};
+	this.alt = function(){doNothing()};
+	this.ctrl = function(){doNothing()};
+	this.shiftAlt = function(){doNothing()};
+	this.shiftCtrl = function(){doNothing()};
+	this.altCtrl = function(){doNothing()};
+	this.shiftAltCtrl = function(){doNothing()};
 	this.preventDefault = true
 }
 
-function initKeys()
-{
+bindings.initKeys = function() {
 	for (var i=0; i<=222; i++)
 	{
 		keys[i] = new key();
 	}
 }
 
-function textEditorBindings()
-{
-	alphaNumericBindings();
+bindings.textEditor = function() {
+	bindings.alphaNumericBindings();
+	bindings.punctuation();
+	bindings.control();
+}
 
+bindings.control = function() {
 	// Backspace
-	keys[8].normal = function(){backspace()};
-	keys[8].shift = function(){backspace()};
+	keys[8].normal = function(){selected.backspace()};
+	keys[8].shift = function(){selected.backspace()};
 	
 	// Tab
 	//keys[9] Needs thought
@@ -51,8 +54,8 @@ function textEditorBindings()
 	keys[27].normal = function(){escape()};
 	
 	// Space
-	keys[32].normal = function(){hPrint('\u00a0')};
-	keys[32].shift = function(){hPrint('\u00a0')};
+	keys[32].normal = function(){selected.print('\u00a0')};
+	keys[32].shift = function(){selected.print('\u00a0')};
 	
 	// Page Up
 	keys[33].normal = function(){pageUp()};
@@ -67,19 +70,19 @@ function textEditorBindings()
 	keys[36].normal = function(){home()};
 	
 	// Left Arrow
-	keys[37].normal = function(){moveCursor(-1, 0)}; // Don't do this in real life
+	keys[37].normal = function(){selected.cursorLeft()}; // moveCursor(-1, 0) was nice
 	
 	// Up Arrow
-	keys[38].normal = function(){moveCursor(0, -1)};
+	keys[38].normal = function(){selected.cursorUp()}; // doesn't update. no blink.
 	
 	// Right Arrow
-	keys[39].normal = function(){moveCursor(1, 0)};
+	keys[39].normal = function(){selected.cursorRight()};
 	
 	// Down Arrow
-	keys[40].normal = function(){moveCursor(0, 1)};
+	keys[40].normal = function(){selected.cursorDown()};
 	
 	// Insert
-	keys[45].normal = function(){toggleInsertMode()};
+	keys[45].normal = function(){selected.toggleInsertMode()};
 	
 	// Delete
 	// keys[46]
@@ -179,195 +182,242 @@ function textEditorBindings()
 	
 	// Scroll Lock
 	// keys[145]
-	
+}
+
+bindings.punctuation = function() {
 	// Semi-colon
-	keys[186].normal = function(){hPrint(';')};
-	keys[186].shift = function(){hPrint(':')};
+	keys[186].normal = function(){selected.print(';')};
+	keys[186].shift = function(){selected.print(':')};
 	
 	// Equals
-	keys[187].normal = function(){hPrint('=')};
-	keys[187].shift = function(){hPrint('+')};
+	keys[187].normal = function(){selected.print('=')};
+	keys[187].shift = function(){selected.print('+')};
 	
 	// Comma
-	keys[188].normal = function(){hPrint(',')};
-	keys[188].shift = function(){hPrint('<')};
+	keys[188].normal = function(){selected.print(',')};
+	keys[188].shift = function(){selected.print('<')};
 	
 	// Hyphen
-	keys[189].normal = function(){hPrint('-')};
-	keys[189].shift = function(){hPrint('_')};
+	keys[189].normal = function(){selected.print('-')};
+	keys[189].shift = function(){selected.print('_')};
 	
 	// Full Stop
-	keys[190].normal = function(){hPrint('.')};
-	keys[190].shift = function(){hPrint('>')};
+	keys[190].normal = function(){selected.print('.')};
+	keys[190].shift = function(){selected.print('>')};
 	
 	// Forward Slash
-	keys[191].normal = function(){hPrint('/')};
-	keys[191].shift = function(){hPrint('?')};
+	keys[191].normal = function(){selected.print('/')};
+	keys[191].shift = function(){selected.print('?')};
 	
 	// Apostrophe
-	keys[192].normal = function(){hPrint('\'')};
-	keys[192].shift = function(){hPrint('@')};
+	keys[192].normal = function(){selected.print('\'')};
+	keys[192].shift = function(){selected.print('@')};
 	
 	// Open Bracket
-	keys[219].normal = function(){hPrint('[')};
-	keys[219].shift = function(){hPrint('{')};
+	keys[219].normal = function(){selected.print('[')};
+	keys[219].shift = function(){selected.print('{')};
 	
 	// Back Slash
-	keys[220].normal = function(){hPrint('\\')};
-	keys[220].shift = function(){hPrint('|')};
+	keys[220].normal = function(){selected.print('\\')};
+	keys[220].shift = function(){selected.print('|')};
 	
 	// Close Bracket
-	keys[221].normal = function(){hPrint(']')};
-	keys[221].shift = function(){hPrint('}')};
+	keys[221].normal = function(){selected.print(']')};
+	keys[221].shift = function(){selected.print('}')};
 	
 	// Hash
-	keys[222].normal = function(){hPrint('#')};
-	keys[222].shift = function(){hPrint('~')};
+	keys[222].normal = function(){selected.print('#')};
+	keys[222].shift = function(){selected.print('~')};
 }
 
-function alphaNumericBindings()
-{
+bindings.alphaNumericBindings = function() {
 	capsLock = false;
 
-	keys[48].normal = function(){hPrint('0')};
-	keys[48].shift = function(){hPrint(')')};
+	keys[48].normal = function(){selected.print('0')};
+	keys[48].shift = function(){selected.print(')')};
 	
-	keys[49].normal = function(){hPrint('1')};
-	keys[49].shift = function(){hPrint('!')};
+	keys[49].normal = function(){selected.print('1')};
+	keys[49].shift = function(){selected.print('!')};
 	
-	keys[50].normal = function(){hPrint('2')};
-	keys[50].shift = function(){hPrint('"')};
+	keys[50].normal = function(){selected.print('2')};
+	keys[50].shift = function(){selected.print('"')};
 	
-	keys[51].normal = function(){hPrint('3')};
-	keys[51].shift = function(){hPrint('\u00A3')};
+	keys[51].normal = function(){selected.print('3')};
+	keys[51].shift = function(){selected.print('\u00A3')};
 	
-	keys[52].normal = function(){hPrint('4')};
-	keys[52].shift = function(){hPrint('$')};
+	keys[52].normal = function(){selected.print('4')};
+	keys[52].shift = function(){selected.print('$')};
 	
-	keys[53].normal = function(){hPrint('5')};
-	keys[53].shift = function(){hPrint('%')};
+	keys[53].normal = function(){selected.print('5')};
+	keys[53].shift = function(){selected.print('%')};
 	
-	keys[54].normal = function(){hPrint('6')};
-	keys[54].shift = function(){hPrint('^')};
+	keys[54].normal = function(){selected.print('6')};
+	keys[54].shift = function(){selected.print('^')};
 	
-	keys[55].normal = function(){hPrint('7')};
-	keys[55].shift = function(){hPrint('&')};
+	keys[55].normal = function(){selected.print('7')};
+	keys[55].shift = function(){selected.print('&')};
 	
-	keys[56].normal = function(){hPrint('8')};
-	keys[56].shift = function(){hPrint('*')};
+	keys[56].normal = function(){selected.print('8')};
+	keys[56].shift = function(){selected.print('*')};
 	
-	keys[57].normal = function(){hPrint('9')};
-	keys[57].shift = function(){hPrint('(')};
+	keys[57].normal = function(){selected.print('9')};
+	keys[57].shift = function(){selected.print('(')};
 	
 	// A to Z
-	keys[65].normal = function(){hPrint('a')};
-	keys[65].shift = function(){hPrint('A')};
+	keys[65].normal = function(){selected.print('a')};
+	keys[65].shift = function(){selected.print('A')};
 	
-	keys[66].normal = function(){hPrint('b')};
-	keys[66].shift = function(){hPrint('B')};
+	keys[66].normal = function(){selected.print('b')};
+	keys[66].shift = function(){selected.print('B')};
 	
-	keys[67].normal = function(){hPrint('c')};
-	keys[67].shift = function(){hPrint('C')};
+	keys[67].normal = function(){selected.print('c')};
+	keys[67].shift = function(){selected.print('C')};
 	
-	keys[68].normal = function(){hPrint('d')};
-	keys[68].shift = function(){hPrint('D')};
+	keys[68].normal = function(){selected.print('d')};
+	keys[68].shift = function(){selected.print('D')};
 	
-	keys[69].normal = function(){hPrint('e')};
-	keys[69].shift = function(){hPrint('E')};
+	keys[69].normal = function(){selected.print('e')};
+	keys[69].shift = function(){selected.print('E')};
 	
-	keys[70].normal = function(){hPrint('f')};
-	keys[70].shift = function(){hPrint('F')};
+	keys[70].normal = function(){selected.print('f')};
+	keys[70].shift = function(){selected.print('F')};
 	
-	keys[71].normal = function(){hPrint('g')};
-	keys[71].shift = function(){hPrint('G')};
+	keys[71].normal = function(){selected.print('g')};
+	keys[71].shift = function(){selected.print('G')};
 	
-	keys[72].normal = function(){hPrint('h')};
-	keys[72].shift = function(){hPrint('H')};
+	keys[72].normal = function(){selected.print('h')};
+	keys[72].shift = function(){selected.print('H')};
 	
-	keys[73].normal = function(){hPrint('i')};
-	keys[73].shift = function(){hPrint('I')};
+	keys[73].normal = function(){selected.print('i')};
+	keys[73].shift = function(){selected.print('I')};
 	
-	keys[74].normal = function(){hPrint('j')};
-	keys[74].shift = function(){hPrint('J')};
+	keys[74].normal = function(){selected.print('j')};
+	keys[74].shift = function(){selected.print('J')};
 	
-	keys[75].normal = function(){hPrint('k')};
-	keys[75].shift = function(){hPrint('K')};
+	keys[75].normal = function(){selected.print('k')};
+	keys[75].shift = function(){selected.print('K')};
 	
-	keys[76].normal = function(){hPrint('l')};
-	keys[76].shift = function(){hPrint('L')};
+	keys[76].normal = function(){selected.print('l')};
+	keys[76].shift = function(){selected.print('L')};
 	
-	keys[77].normal = function(){hPrint('m')};
-	keys[77].shift = function(){hPrint('M')};
+	keys[77].normal = function(){selected.print('m')};
+	keys[77].shift = function(){selected.print('M')};
 	
-	keys[78].normal = function(){hPrint('n')};
-	keys[78].shift = function(){hPrint('N')};
+	keys[78].normal = function(){selected.print('n')};
+	keys[78].shift = function(){selected.print('N')};
 	
-	keys[79].normal = function(){hPrint('o')};
-	keys[79].shift = function(){hPrint('O')};
+	keys[79].normal = function(){selected.print('o')};
+	keys[79].shift = function(){selected.print('O')};
 	
-	keys[80].normal = function(){hPrint('p')};
-	keys[80].shift = function(){hPrint('P')};
+	keys[80].normal = function(){selected.print('p')};
+	keys[80].shift = function(){selected.print('P')};
 	
-	keys[81].normal = function(){hPrint('q')};
-	keys[81].shift = function(){hPrint('Q')};
+	keys[81].normal = function(){selected.print('q')};
+	keys[81].shift = function(){selected.print('Q')};
 	
-	keys[82].normal = function(){hPrint('r')};
-	keys[82].shift = function(){hPrint('R')};
+	keys[82].normal = function(){selected.print('r')};
+	keys[82].shift = function(){selected.print('R')};
 	
-	keys[83].normal = function(){hPrint('s')};
-	keys[83].shift = function(){hPrint('S')};
+	keys[83].normal = function(){selected.print('s')};
+	keys[83].shift = function(){selected.print('S')};
 	keys[83].ctrl = function(){save()};
 	
-	keys[84].normal = function(){hPrint('t')};
-	keys[84].shift = function(){hPrint('T')};
+	keys[84].normal = function(){selected.print('t')};
+	keys[84].shift = function(){selected.print('T')};
 	
-	keys[85].normal = function(){hPrint('u')};
-	keys[85].shift = function(){hPrint('U')};
+	keys[85].normal = function(){selected.print('u')};
+	keys[85].shift = function(){selected.print('U')};
 	
-	keys[86].normal = function(){hPrint('v')};
-	keys[86].shift = function(){hPrint('V')};
+	keys[86].normal = function(){selected.print('v')};
+	keys[86].shift = function(){selected.print('V')};
 	
-	keys[87].normal = function(){hPrint('w')};
-	keys[87].shift = function(){hPrint('W')};
+	keys[87].normal = function(){selected.print('w')};
+	keys[87].shift = function(){selected.print('W')};
 	
-	keys[88].normal = function(){hPrint('x')};
-	keys[88].shift = function(){hPrint('X')};
+	keys[88].normal = function(){selected.print('x')};
+	keys[88].shift = function(){selected.print('X')};
 	
-	keys[89].normal = function(){hPrint('y')};
-	keys[89].shift = function(){hPrint('Y')};
+	keys[89].normal = function(){selected.print('y')};
+	keys[89].shift = function(){selected.print('Y')};
 	
-	keys[90].normal = function(){hPrint('z')};
-	keys[90].shift = function(){hPrint('Z')};
+	keys[90].normal = function(){selected.print('z')};
+	keys[90].shift = function(){selected.print('Z')};
 }
 
-function capsLockBindings()
-{
+bindings.capsLockBindings = function() {
 	capsLock = true;
 
-	keys[65].normal = function(){hPrint('A')};
-	keys[66].normal = function(){hPrint('B')};
-	keys[67].normal = function(){hPrint('C')};
-	keys[68].normal = function(){hPrint('D')};
-	keys[69].normal = function(){hPrint('E')};
-	keys[70].normal = function(){hPrint('F')};
-	keys[71].normal = function(){hPrint('G')};
-	keys[72].normal = function(){hPrint('H')};
-	keys[73].normal = function(){hPrint('I')};
-	keys[74].normal = function(){hPrint('J')};
-	keys[75].normal = function(){hPrint('K')};
-	keys[76].normal = function(){hPrint('L')};
-	keys[77].normal = function(){hPrint('M')};
-	keys[78].normal = function(){hPrint('N')};
-	keys[79].normal = function(){hPrint('O')};
-	keys[80].normal = function(){hPrint('P')};
-	keys[81].normal = function(){hPrint('Q')};
-	keys[82].normal = function(){hPrint('R')};
-	keys[83].normal = function(){hPrint('S')};
-	keys[84].normal = function(){hPrint('T')};
-	keys[85].normal = function(){hPrint('U')};
-	keys[86].normal = function(){hPrint('V')};
-	keys[87].normal = function(){hPrint('W')};
-	keys[88].normal = function(){hPrint('X')};
-	keys[89].normal = function(){hPrint('Y')};
-	keys[90].normal = function(){hPrint('Z')};
+	keys[65].normal = function(){selected.print('A')};
+	keys[66].normal = function(){selected.print('B')};
+	keys[67].normal = function(){selected.print('C')};
+	keys[68].normal = function(){selected.print('D')};
+	keys[69].normal = function(){selected.print('E')};
+	keys[70].normal = function(){selected.print('F')};
+	keys[71].normal = function(){selected.print('G')};
+	keys[72].normal = function(){selected.print('H')};
+	keys[73].normal = function(){selected.print('I')};
+	keys[74].normal = function(){selected.print('J')};
+	keys[75].normal = function(){selected.print('K')};
+	keys[76].normal = function(){selected.print('L')};
+	keys[77].normal = function(){selected.print('M')};
+	keys[78].normal = function(){selected.print('N')};
+	keys[79].normal = function(){selected.print('O')};
+	keys[80].normal = function(){selected.print('P')};
+	keys[81].normal = function(){selected.print('Q')};
+	keys[82].normal = function(){selected.print('R')};
+	keys[83].normal = function(){selected.print('S')};
+	keys[84].normal = function(){selected.print('T')};
+	keys[85].normal = function(){selected.print('U')};
+	keys[86].normal = function(){selected.print('V')};
+	keys[87].normal = function(){selected.print('W')};
+	keys[88].normal = function(){selected.print('X')};
+	keys[89].normal = function(){selected.print('Y')};
+	keys[90].normal = function(){selected.print('Z')};
+}
+
+window.onkeydown = checkKey;
+
+function checkKey(e)
+{
+	if (keys[e.keyCode].preventDefault)
+	{
+		e.preventDefault();
+	}
+	if (e.shiftKey && e.altKey && e.ctrlKey)
+	{
+		keys[e.keyCode].shiftAltCtrl();
+		return;
+	}
+	if (e.shiftKey && e.altKey)
+	{
+		keys[e.keyCode].shiftAlt();
+		return;
+	}
+	if (e.shiftKey && e.ctrlKey)
+	{
+		keys[e.keyCode].shiftCtrl();
+		return;
+	}
+	if (e.altKey && e.ctrlKey)
+	{
+		keys[e.keyCode].altCtrl();
+		return;
+	}
+	if (e.shiftKey)
+	{
+		keys[e.keyCode].shift();
+		return;
+	}
+	if (e.altKey)
+	{
+		keys[e.keyCode].alt();
+		return;
+	}
+	if (e.ctrlKey)
+	{
+		keys[e.keyCode].ctrl();
+		return;
+	}
+	keys[e.keyCode].normal();
+	return;
 }

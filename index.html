@@ -1,6 +1,6 @@
 <html>
-	<body onload="console.init()" onresize="console.realign()">
-		<style>#console { 
+	<body onload="terminal.init()" onresize="terminal.realign()">
+		<style>#terminal { 
 			position: absolute;
 			width: 500px;
 			height: 500px;	
@@ -10,7 +10,7 @@
 		}</style>
 		<script src="punchdeck.js"></script>
 		<script src="bindings.js"></script>
-		<div id="console" class="animate"></div>
+		<div id="terminal" class="animate"></div>
 		<style>
 		.animate {
 				-webkit-animation-name: animate;
