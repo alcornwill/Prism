@@ -1,30 +1,46 @@
 function doNothing() {};
 
-var terminal={}; // namespace
-
-terminal.width=52; // could be determined programmatically
-terminal.height=28; 
-
-terminal.subRegion=[];
-terminal.activeBuffer = 0;
-
-terminal.selected={};
+var terminal= {
+	width: 52,
+	height: 27,  // could be determined programmatically
+	
+	subRegion: [],
+	activeBuffer: 0,
+	
+	hasChanged: true,
+	changed: function() {
+		this.hasChanged=true;
+	}
+};
 
 (function() {
-	lines=[];
-
+	var lines=[];
+	var container={};
+	
+	terminal.realign= (function() {
+		var pxWidth=500;
+		var pxHeight=500;
+		return function () {
+			var w=window.innerWidth;
+			var h=window.innerHeight;
+			container.style.width=pxWidth;
+			container.style.height=pxHeight;
+			container.style.top=((h/2)-(pxWidth/2))+"px";
+			container.style.left=((w/2)-(pxHeight/2))+"px";
+		};
+	})(),
 	terminal.init= (function() {
 		function constructDivs() {
 			for (var y=0; y<terminal.height; y++) {
 				var node=document.createElement("DIV");
 				node.id="line"+y;
-				terminal.terminal.appendChild(node);
+				container.appendChild(node);
 				lines[y]=node;
 			}
 		};
 		
 		return function () {
-			terminal.terminal=document.getElementById("terminal");
+			container=document.getElementById("terminal");
 			terminal.realign();
 			constructDivs();
 			bindings.initKeys();
@@ -43,13 +59,10 @@ terminal.selected={};
 			}
 			return line;
 		};
-		
 		function draw(toDraw) {
 			drawRegion(0, toDraw);
 		};
-		
-		// text regions should not be rendered like this if we are going to have control characters. We need a separate buffer for storing encoded text.
-		// Also implement paul blart here
+		// implement paul blart here
 		function drawRegion(offset, toDraw, parentChanged) {
 			offset+=(toDraw.y*terminal.width)+toDraw.x;
 			
@@ -59,20 +72,12 @@ terminal.selected={};
 				var i=offset;
 				for (var y=0; y<toDraw.height; y++) {
 					for (var x=0; x<toDraw.width; x++) {
-						// well this is fucking rediculess
-						var text=
-						'<font color="'+toDraw.colour+
-						'" background-color="'+toDraw.background+'">';
-						if (toDraw.underlined) { text+='<u>'; }
-						if (toDraw.bold) { text+='<b>'; }
-						if (toDraw.italic) { text+='<i>'; }
-						text+=toDraw.buffer[(y*toDraw.width)+x] 
-						if (toDraw.underlined) { text+='</u>'; }
-						if (toDraw.bold) { text+='</b>'; }
-						if (toDraw.italic) { text+='</i>'; }
-						text += "</font>";
-						
-						textBuffer.buffer[i]=text;
+						var element = toDraw.buffer[(y*toDraw.width)+x];
+						if (bindings.isType(toDraw, "EditableTextRegion")) {
+							textBuffer.buffer[i]=element;
+						} else {
+							textBuffer.buffer[i]=bindings.fontWrap(element, toDraw.colour, toDraw.background);
+						}
 						i++;
 					}
 					i+=textBuffer.width-toDraw.width;
@@ -99,90 +104,6 @@ terminal.selected={};
 	})();
 })();
 
-terminal.realign= (function() {
-	var pxWidth=500;
-	var pxHeight=500;
-	return function () {
-		var w=window.innerWidth;
-		var h=window.innerHeight;
-		terminal.terminal.style.width=pxWidth;
-		terminal.terminal.style.height=pxHeight;
-		terminal.terminal.style.top=((h/2)-(pxWidth/2))+"px";
-		terminal.terminal.style.left=((w/2)-(pxHeight/2))+"px";
-	};
-})();
-
-// pass it a name. It finds the item, moves it to the top of it's stack, and selects it.
-terminal.select= (function() {
-	var cache=[];
-	function innerSearch(item, name) {
-		for (var i=0; i<item.length; i++) {
-			if (item[i].name===name) {
-				return item;
-			}
-			var result = innerSearch(item[i].subRegion, name);
-			if (result) {
-				return result;
-			}
-		}
-		return 0;
-	}
-	return function (name) {
-		for (var i=0; i<cache.length; i++) {
-			if (cache[i].name===name) {
-				return cache[i];
-			}
-		}
-		var result = innerSearch(terminal.subRegion, name);
-		if (result) {
-			cache.push(result);
-		}
-		if (!result) {
-			console.log("item " + name + " found");
-			return;
-		}
-		for (var i=0; i<result.length; i++) {
-			if (result[i].name===name) {
-				var item = result[i];
-				result.splice(i, 1);
-				result.push(item);
-				item.select();
-				return;
-			}
-		}
-	}
-})();
-
-terminal.search = (function() {
-	var cache=[];
-	function innerSearch(item, name) {
-		for (var i=0; i<item.length; i++) {
-			if (item[i].name===name) {
-				return item[i];
-			}
-			var result = innerSearch(item[i].subRegion, name);
-			if (result) {
-				return result;
-			}
-		}
-		return 0;
-	}
-	return function (name) {
-		for (var i=0; i<cache.length; i++) {
-			if (cache[i].name===name) {
-				return cache[i];
-			}
-		}
-		var result = innerSearch(terminal.subRegion, name);
-		if (result) {
-			cache.push(result);
-		}
-		return result || (function() {console.log("item " + name + " found")})();
-	}
-})();
-
-terminal.hasChanged=true;
-
 // this might need closuring / namespacing. This whole thing might need closuring / namespacing. I'm not sure how it will change though so I'm leavin it for now.
 function Region(name, width, height, x, y) {
 	this.name = name || (function() {
@@ -197,12 +118,9 @@ function Region(name, width, height, x, y) {
 	this.visible=true;
 	this.colour='#1D5FA1';
 	this.background='#F7FCFF';
-	this.underlined=false;
-	this.bold=false;
-	this.italic=false;
 	this.selectFunction = function(){doNothing()};
 	this.select = function() {
-		terminal.selected = this;
+		bindings.selected = this;
 		this.selectFunction();
 	}; 
 	this.hydrate = function() {
@@ -241,103 +159,168 @@ function WindowRegion(name) {
 
 WindowRegion.prototype=new Region("WindowRegion", terminal.width, terminal.height-1, 0, 1);
 
-function EditableTextRegion(name, width, height, x, y) {
-	this.name=name;
-	this.width=width;
-	this.height=height;
-	this.x=x;
-	this.y=y;
-	this.buffer=[];
-	this.encodedBuffer=[];
-	this.subRegion=[];
-	this.selectFunction=function () { bindings.textEditor() };
-	// I could write some matrix methods to help going up / down in y.
-	this.update=(function(that) {
-		var tab = function() {
-			var x = that.pointer%that.width;
-			for (var i=x%terminal.tabsize; i<terminal.tabsize; i++) {
-				helperPrint('\u00a0');
-			}
+var EditableTextRegion = {};
+var TextRegion = {};
+
+(function() {
+	var letterWrap= function(text, letter) {
+		return "<" + letter + ">" + text + "</" + letter + ">";
+	};
+	var wrap= function(symbol) {
+		var ch=symbol[0];
+		var colour=symbol[1];
+		var background=symbol[2];
+		var underlined=symbol[3];
+		var bold=symbol[4];
+		var italics=symbol[5];
+		
+		if (underlined) {ch=letterWrap(ch, "u")};
+		if (bold) {ch=letterWrap(ch, "b")};
+		if (italics) {ch=letterWrap(ch, "i")};
+		return bindings.fontWrap(ch, colour, background);
+	};
+	var updateFunction = function(that) {
+			var helperPointer=0;
+			var tab = function() {
+				var x = helperPointer%that.width;
+				for (var i=x%terminal.tabsize; i<terminal.tabsize; i++) {
+					printSpace();
+				}
+			};
+			var newLine = function() {
+				for (var i=helperPointer%that.width; i<that.width; i++) {
+					printSpace();
+				}
+			};
+			// it looks weird that spaces arn't underlined. Fuck it, it's by design.
+			var printSpace= function() {
+				helperPrint(['\u00a0', bindings.colourMode, bindings.background, false, false, false]);
+			};
+			var helperPrint = function(symbol) {
+				that.buffer[helperPointer]=wrap(symbol);
+				helperPointer++;
+			};
+			var decode = function(symbol) {
+				switch(symbol[0]) {
+					case ' ':
+						printSpace();
+						break;
+					case '\r\n':
+						newLine();
+						break;
+					case '\t':
+						tab();
+						break;
+					default:
+						helperPrint(symbol);
+				}
+			};
+			return function() {
+				this.hydrate();
+				helperPointer=0;
+				this.pointer=0;
+				for (var i=0; i<this.encodedBuffer.length; i++) {
+					decode(this.encodedBuffer[i]);
+					if (i+1===this.encodedPointer) {
+						this.pointer=helperPointer;
+					}
+				}
+			};
 		};
-		var newLine = function() {
-			for (var i=that.pointer%that.width; i<that.width; i++) {
-				helperPrint('\u00a0');
-			}
-		};
-		var helperPrint = function(symbol) {
-			that.buffer[that.pointer]=symbol;
-			that.pointer++;
-		};
-		var decode = function(symbol) {
-			switch(symbol) {
-				case ' ':
-					helperPrint('\u00a0');
-					break;
-				case '\n':
-					newLine();
-					break;
-				case '\t':
-					tab();
-					break;
-				default:
-					helperPrint(symbol);
-			}
-		};
-		return function() {
-			this.hydrate();
-			this.pointer=0;
-			this.anotherPointer=0;
-			for (var i=0; i<this.encodedBuffer.length; i++) {
-				decode(this.encodedBuffer[i]);
-				if (i+1===this.encodedPointer) {
-					this.anotherPointer=this.pointer;
+	TextRegion = function(name, width, height, x, y) {
+		this.name=name;
+		this.width=width;
+		this.height=height;
+		this.x=x;
+		this.y=y;
+		this.buffer=[];
+		this.encodedBuffer=[];
+		this.pointer=0;
+		this.subRegion=[];
+		this.update=updateFunction(this);
+		this.printText = function(text) {
+			for (var i=0; i<text.length; i++) {
+				// for fucks sake microsoft
+				if (text[i]!=="\r") { this.encodedBuffer.push([text[i], bindings.colourMode, bindings.background, false, false, false]); }
+				else {
+					this.encodedBuffer.push(["\r\n", bindings.colourMode, bindings.background, false, false, false]);
+					i++;
 				}
 			}
-		};
-	})(this);
-	this.subRegion.push((function (that) {
-		var cursor=new MiniRegion(that.name + "Cursor", 1, 1);
-		cursor.visible=false;
-		cursor.buffer[0]='\u2588';
-		cursor.update=function () {
-			cursor.x=that.anotherPointer%that.width;
-			cursor.y=Math.floor(that.anotherPointer/that.width);
-		};
-		return cursor;
-	})(this));
-	this.encodedPointer=0;
-	this.pointer=0;
-	this.anotherPointer=0;
-	// could have a global object set to hasChanged, if nothing has changed don't redraw. also make it so that if something is redrawn, everything beneath it is redrawn too. then could get rid of reDraw.
-	this.cursorRight=function () {
-		bindings.startTimer();
-		this.encodedPointer++;
-		this.hasChanged=true; 
-		this.subRegion[0].hasChanged=true; // this is fucking silly
-	}
-	this.cursorLeft=function () {
-		bindings.startTimer();
-		if (this.encodedPointer>0) {
-			this.encodedPointer--;
-		}
-		this.hasChanged=true;
-		this.subRegion[0].hasChanged=true;
-	}
-	this.print=function (symbol) {
-		bindings.insertMode
-		? this.encodedBuffer.splice(this.encodedPointer, 0, symbol)
-		: this.encodedBuffer[this.encodedPointer]=symbol;
-		this.cursorRight();
-	}
-	this.backspace=function () {
-		this.cursorLeft();
-		if (this.encodedBuffer.length) {
-			this.encodedBuffer.splice(this.encodedPointer, 1);
+			// // fuck style for now. But I could work out a way of encoding it like \#FFFFFF or whatever
+			// for (var i=0; i<text.length; i++) {
+				// if (text[i]!=="\\") { this.encodedBuffer[i]=text[i]; } else {
+					// if (text.length!==i+1&&text[i+1]!=="\\") {
+						// // for fucks sake microsoft
+						// if (text[i+1]==="r") {
+							// this.encodedBuffer[i]="\r\n";
+							// i+=3;
+						// } else {
+							// this.encodedBuffer[i]="\\"+text[i+1];
+							// i++;
+						// }
+					// } else {
+						// this.encodedBuffer[i]="\\";
+					// }
+				// }
+			// }		
 		}
 	}
-};
+	EditableTextRegion = function(name, width, height, x, y) {
+		this.name=name;
+		this.width=width;
+		this.height=height;
+		this.x=x;
+		this.y=y;
+		this.buffer=[];
+		this.encodedBuffer=[];
+		this.encodedPointer=0;
+		this.pointer=0;
+		this.subRegion=[];
+		this.selectFunction=function () { bindings.textEditor() };
+		// I could write some matrix methods to help going up / down in y.
+		this.update=updateFunction(this);
+		this.subRegion.push((function (that) {
+			var cursor=new MiniRegion(that.name + "Cursor", 1, 1);
+			cursor.visible=false;
+			cursor.buffer[0]='\u2588';
+			cursor.update=function () {
+				cursor.x=that.pointer%that.width;
+				cursor.y=Math.floor(that.pointer/that.width);
+			};
+			return cursor;
+		})(this));
+		this.cursorRight=function () {
+			bindings.startTimer();
+			this.encodedPointer++;
+			this.hasChanged=true; 
+			this.subRegion[0].changed();
+		}
+		this.cursorLeft=function () {
+			bindings.startTimer();
+			if (this.encodedPointer>0) {
+				this.encodedPointer--;
+			}
+			this.hasChanged=true;
+			this.subRegion[0].changed();
+		}
+		this.print=function (symbol) {
+			bindings.insertMode
+			? this.encodedBuffer.splice(this.encodedPointer, 0, [symbol, bindings.colourMode, bindings.background, bindings.underlined, bindings.bold, bindings.italics])
+			: this.encodedBuffer[this.encodedPointer]=[symbol, bindings.colourMode, bindings.background, bindings.underlined, bindings.bold, bindings.italics];
+			this.cursorRight();
+		}
+		this.backspace=function () {
+			this.cursorLeft();
+			if (this.encodedBuffer.length) {
+				this.encodedBuffer.splice(this.encodedPointer, 1);
+			}
+		}
+	};
+})();
 
 EditableTextRegion.prototype = new Region("EditableTextRegion");
+TextRegion.prototype = new Region("TextRegion");
 
 function MiniRegion(name, width, height, x, y) {
 	this.name=name;
@@ -378,12 +361,11 @@ function runAlpha() {
 	alpha.initChar='\u2591';
 	alpha.subRegion.push((function() {
 		var alphaText = new EditableTextRegion("AlphaText", 24, 12, 2, 1);
-		alphaText.hydrate();
 		return alphaText;
 	})());
 	alpha.hydrate();
 	terminal.subRegion[terminal.activeBuffer].subRegion.push(alpha);
-	terminal.select("AlphaText");
+	bindings.select("AlphaText");
 	bindings.observed.push(alpha.subRegion[0]);
 	bindings.observed.push(alpha.subRegion[0].subRegion[0]);
 }
@@ -393,15 +375,16 @@ function initLogin() {
 	login.initChar='\u00a0';
 	login.hydrate();
 	login.subRegion.push( (function() {
-		var welcome = new MiniRegion("Welcome", 10, 3, 21, 7);
-		welcome.buffer="Welcome to PunchDeck----------"; // won't be a problem with encoded text
+		var welcome = new TextRegion("Welcome", 15, 3, 21, 7);
+		welcome.printText("\tWelcome\r\n  to PunchDeck\r\n---------------");
+		welcome.update();
 		return welcome;
 	})());
 	login.selectFunction= function() {
 		bindings.control();
 	}
 	terminal.subRegion.push(login);
-	terminal.select("Login");
+	bindings.select("Login");
 }
 
 function initDesktop() {
@@ -448,7 +431,8 @@ function createHorizontalButtonList(name, menuItems) {
 	return menu;
 }
 	
-// function createContextMenu
+function createContextMenu(name, menuItems) { };
+	
 
 
-terminal.tabsize=3;
+terminal.tabsize=4;
