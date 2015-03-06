@@ -1,15 +1,9 @@
+// I'm going to set my bindings model straight.
+// The select function of each region just sets bindings. It might as well be renamed to bindings. If something changes then at render time, all the select functions need to be called to set the bindings correctly, in the rendering order. I need to stop calling select at object creation. And when something goes out of scope (I'm not sure what that means) all the bindings need to be wiped. Each selectFunction just calls a bindings function here. It works because there is no cursor, and I don't want tabbing going on either, so you can't actually select anything without a binding. The function bound to the key can contain, by reference or not, the logic to perform anything. Yeah it shouldn't be called select.
+
 // one bindings to many terminals.
 var bindings = {
 	selected: {},
-	observed: [],
-	updateObserved: function() {
-		if (!bindings.observed.length) {return}
-		for (var i=0; i<bindings.observed.length; i++) {
-			if (bindings.observed[i].hasChanged) {
-				bindings.observed[i].update();
-			}
-		}
-	},
 	isType: function(item, type) {
 		return item.__proto__.name===type
 	}
@@ -47,6 +41,7 @@ function save() {
 		var result= innerFind(terminal, terminal.subRegion, name);
 		return result || console.log("item " + name + " found");
 	}
+	// Fuck. Whenever you select something, it's supposed to bring the whole branch to the front, not just the selected item. I can do it but it's really thinky.
 	bindings.select= function(name) {
 		var result = findParent(name);
 		var subRegion = result.subRegion;
@@ -172,8 +167,7 @@ bindings.fontWrap = function(text, colour, background) {
 					cursor.visible
 					? cursor.visible=false
 					: cursor.visible=true;
-					cursor.hasChanged=true;
-					bindings.selected.hasChanged=true; // this is fucking stupid.
+					bindings.selected.changed();
 				}
 			}
 			return function() {
@@ -227,6 +221,18 @@ bindings.fontWrap = function(text, colour, background) {
 		keys[27].normal = function(){escape()};
 		// more alt + letter bindings go here
 		// cursor keys
+	}
+	
+	bindings.testMenu = function(that) {
+		keys[40].normal = function(){bindings.toggleTestMenu(that)};
+	}
+		
+	bindings.toggleTestMenu = function(that) {
+		that.visible
+		? that.visible=false
+		: that.visible=true;
+		// can't change parent :(
+		that.changed();
 	}
 	
 	// bindings.print and stuff?
@@ -298,7 +304,7 @@ bindings.fontWrap = function(text, colour, background) {
 		// keys[92]
 		
 		// Select
-		keys[93].normal = function(){select()}; // dunno lol
+		// keys[93]
 
 		// Numpad 0
 		keys[96].normal = function(){bindings.colourMode="black"};
@@ -346,10 +352,10 @@ bindings.fontWrap = function(text, colour, background) {
 		// keys[111]
 		
 		// F1
-		keys[112].normal = function(){terminal.activeBuffer=0; terminal.subRegion[0].hasChanged=true;};
+		keys[112].normal = function(){terminal.activeBuffer=0; terminal.subRegion[0].changed();};
 		
 		// F2
-		keys[113].normal = function(){terminal.activeBuffer=1; terminal.subRegion[1].hasChanged=true;};
+		keys[113].normal = function(){terminal.activeBuffer=1; terminal.subRegion[1].changed();};
 		
 		// F3
 		keys[114].normal = function(){runAlpha()};
