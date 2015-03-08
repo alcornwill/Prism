@@ -1,6 +1,8 @@
 function doNothing() {};
 
 var terminal= {
+	name: "Terminal",
+
 	subRegion: [],
 	activeBuffer: 0,
 	
@@ -42,9 +44,9 @@ var terminal= {
 			container=document.getElementById("terminal");
 			terminal.realign();
 			constructDivs();
-			bindings.initKeys();
+			PD.initKeys();
 			crappyTest();
-			bindings.startTimer();
+			PD.startTimer();
 			setInterval(terminal.update, 32); // fixed 30fps
 		};
 	})();
@@ -66,10 +68,10 @@ var terminal= {
 			for (var y=0; y<toDraw.height; y++) {
 				for (var x=0; x<toDraw.width; x++) {
 					var element = toDraw.buffer[toDraw.getPointer(x, y)];
-					if (bindings.isType(toDraw, "EditableTextRegion")||bindings.isType(toDraw, "TextRegion")) {
+					if (PD.isType(toDraw, "EditableTextRegion")||PD.isType(toDraw, "TextRegion")) {
 						textBuffer.buffer[i]=element;
 					} else {
-						textBuffer.buffer[i]=bindings.fontWrap(element, toDraw.colour, toDraw.background);
+						textBuffer.buffer[i]=PD.fontWrap(element, toDraw.colour, toDraw.background);
 					}
 					i++;
 				}
@@ -123,7 +125,7 @@ function Region(name, width, height, x, y) {
 	this.background='#F7FCFF';
 	this.selectFunction = function(){doNothing()};
 	this.select = function() {
-		bindings.selected = this;
+		PD.selected = this;
 		this.selectFunction();
 	}; 
 	this.hydrate = function() {
@@ -187,7 +189,7 @@ var TextRegion = {};
 		if (underlined) {ch=letterWrap(ch, "u")};
 		if (bold) {ch=letterWrap(ch, "b")};
 		if (italics) {ch=letterWrap(ch, "i")};
-		return bindings.fontWrap(ch, colour, background);
+		return PD.fontWrap(ch, colour, background);
 	};
 	var updateFunction = function(that) {
 			var helperPointer=0;
@@ -204,7 +206,7 @@ var TextRegion = {};
 			};
 			// it looks weird that spaces arn't underlined. Fuck it, it's by design.
 			var printSpace= function() {
-				helperPrint(['\u00a0', bindings.colourMode, bindings.background, false, false, false]);
+				helperPrint(['\u00a0', PD.colourMode, PD.background, false, false, false]);
 			};
 			var helperPrint = function(symbol) {
 				that.buffer[helperPointer]=wrap(symbol);
@@ -252,16 +254,16 @@ var TextRegion = {};
 		this.printText = function(text) {
 			for (var i=0; i<text.length; i++) {
 				// for fucks sake microsoft
-				if (text[i]!=="\r") { this.encodedBuffer.push([text[i], bindings.colourMode, bindings.background, false, false, false]); }
+				if (text[i]!=="\r") { this.encodedBuffer.push([text[i], PD.colourMode, PD.background, false, false, false]); }
 				else {
-					this.encodedBuffer.push(["\r\n", bindings.colourMode, bindings.background, false, false, false]);
+					this.encodedBuffer.push(["\r\n", PD.colourMode, PD.background, false, false, false]);
 					i++;
 				}
 			}		
 		}
 	}
 	function encode(symbol) {
-		return [symbol, bindings.colourMode, bindings.background, bindings.underlined, bindings.bold, bindings.italics];
+		return [symbol, PD.colourMode, PD.background, PD.underlined, PD.bold, PD.italics];
 	}
 	EditableTextRegion = function(name, width, height, x, y) {
 		this.name=name;
@@ -274,10 +276,10 @@ var TextRegion = {};
 		this.encodedPointer=0;
 		this.pointer=0;
 		this.subRegion=[];
-		this.selectFunction=function () { bindings.textEditor() };
+		this.selectFunction=function () { PD.textEditor() };
 		// I could write some matrix methods to help going up / down in y.
 		this.update=updateFunction(this);
-		this.subRegion.push( (function (that) {
+		PD.pushRegion( (function (that) {
 			var cursor=new VanillaRegion(that.name + "Cursor", 1, 1);
 			cursor.visible=false;
 			cursor.buffer[0]='\u2588';
@@ -287,21 +289,21 @@ var TextRegion = {};
 				cursor.y=vector.y;
 			};
 			return cursor;
-		})(this));
+		})(this), this);
 		this.cursorRight=function () {
-			bindings.startTimer();
+			PD.startTimer();
 			this.encodedPointer++;
 			this.changed();
 		}
 		this.cursorLeft=function () {
-			bindings.startTimer();
+			PD.startTimer();
 			if (this.encodedPointer>0) {
 				this.encodedPointer--;
 			}
 			this.changed();
 		}
 		this.print=function (symbol) {
-			bindings.insertMode
+			PD.insertMode
 			? this.encodedBuffer.splice(this.encodedPointer, 0, encode(symbol))
 			: this.encodedBuffer[this.encodedPointer]=encode(symbol);
 			this.cursorRight();
@@ -418,68 +420,78 @@ function crappyTest() {
 function runAlpha() {
 	var alpha = new WindowRegion("Alpha");
 	alpha.initChar='\u2591';
-	alpha.subRegion.push((function() {
+	PD.pushRegion( (function() {
 		var alphaText = new EditableTextRegion("AlphaText", 24, 12, 2, 1);
 		return alphaText;
-	})());
+	})(), alpha);
 	alpha.hydrate();
-	terminal.subRegion[terminal.activeBuffer].subRegion.push(alpha);
-	bindings.select("AlphaText");
+	PD.pushRegion(alpha, terminal.subRegion[terminal.activeBuffer])
+	PD.select("AlphaText");
 }
 
 function initLogin() {
 	var login = new ScreenRegion("Login");
 	login.initChar='\u00a0';
 	login.hydrate();
-	login.subRegion.push( (function() {
-		var testBox = new BoxRegion("TestBox", 20, 7, 19, 5);
-		testBox.hydrate();
-		testBox.decorate();
-		testBox.subRegion.push( (function() {
+	PD.pushRegion( (function() {
+		var welcomeBox = new BoxRegion("WelcomeBox", 20, 7, 19, 5);
+		welcomeBox.hydrate();
+		welcomeBox.decorate();
+		welcomeBox.subRegion.push( (function() {
 			var welcome = new TextRegion("Welcome", 15, 3, 2, 2);
 			welcome.printText("\tWelcome\r\n  to PunchDeck\r\n---------------");
 			welcome.update();
 			return welcome;
 		})());
-		return testBox;
-	})());
-
-	login.selectFunction= function() {
-		bindings.control();
-	}
-	terminal.subRegion.push(login);
-	bindings.select("Login");
+		return welcomeBox;
+	})(), login);
+	login.selectFunction= function() { PD.controlBindings(); }
+	PD.pushRegion(login, terminal);
+	PD.select("Login");
 }
 
 function initDesktop() {
 	var desktop = new ScreenRegion("Desktop");
 	desktop.hydrate();
-	desktop.subRegion.push(initDesktopMenu());
-	desktop.subRegion.push(initTestMenu());
-	terminal.subRegion.push(desktop);
+	PD.pushRegion(initDesktopMenu(), desktop);
+	PD.pushRegion(desktop, terminal);
 }
 
 function initDesktopMenu() {
-	var menuItems = [
-		{ name: "Meta", selectFunction: function(){bindings.metaButtonBindings()} }, // create context menu and select it, which will set the context menu bindings.
-		{ name: "File", selectFunction: function(){doNothing()} },
-		{ name: "Edit", selectFunction: function(){doNothing()} },
-		{ name: "View", selectFunction: function(){doNothing()} },
-		{ name: "Tools", selectFunction: function(){doNothing()} }
+	var menuItems = [ { 
+			name: "Meta", 
+			selectFunction: function(){ 
+				PD.customBinding(77, "alt", function(){PD.select("MetaButtonContextMenu")})
+			},
+			subRegions: [
+				createMenu("MetaButtonContext", [
+					{ name: "Alpha", selectFunction: function(){doNothing()} },
+					{ name: "Beta", selectFunction: function(){doNothing()} },
+					{ name: "Zeta", selectFunction: function(){doNothing()} },
+					{ name: "Eta", selectFunction: function(){doNothing()} },
+					{ name: "Theta", selectFunction: function(){doNothing()} }
+				], 0, 1)
+			]
+		}, {
+			name: "File",
+			selectFunction: function(){doNothing()},
+			subRegions: 0
+		}, {
+			name: "Edit",
+			selectFunction: function(){doNothing()},
+			subRegions: 0
+		}, {
+			name: "View",
+			selectFunction: function(){doNothing()},
+			subRegions: 0
+		}, {
+			name: "Tools",
+			selectFunction: function(){doNothing()},
+			subRegions: 0
+		}
 	];
 	
 	return createTopBar("Desktop", menuItems);
-}
-
-function initTestMenu() {
-	var menuItems = [
-		{ name: "Alpha", selectFunction: function(){bindings.metaButtonBindings()} }, // create context menu and select it, which will set the context menu bindings.
-		{ name: "Beta", selectFunction: function(){doNothing()} },
-		{ name: "Zeta", selectFunction: function(){doNothing()} },
-		{ name: "Eta", selectFunction: function(){doNothing()} },
-		{ name: "Theta", selectFunction: function(){doNothing()} }
-	];
-	return createMenu("DesktopTest", menuItems, 0, 1);
 }
 	
 // The menu items should change depending on the selected program.
@@ -488,16 +500,21 @@ function createTopBar(name, menuItems) {
 	var menu=new VanillaRegion(name+"TopBar", 1, 1);
 	var totalWidth=0;
 	for (var i=0; i<menuItems.length; i++) {
-		menu.subRegion.push( (function() { 
+		PD.pushRegion( (function() { 
 			var item= new ButtonRegion(menuItems[i].name);
 			item.selectFunction=menuItems[i].selectFunction;
 			if (i!==0) {
 				totalWidth += menuItems[i-1].name.length+1;
 				item.x = totalWidth;
 			}
+			if (menuItems[i].subRegions) {
+				for (var j=0; j<menuItems[i].subRegions.length; j++) {
+					PD.pushRegion(menuItems[i].subRegions[j], item);
+				}
+			}
 			item.select();
 			return item;
-		})());
+		})(), menu);
 		menu.width=totalWidth+menuItems[i].name.length+1;
 	}
 	menu.hydrate();
@@ -509,7 +526,7 @@ function createMenu(name, menuItems, x, y) {
 	var menu=new VanillaRegion(name+"Menu", 0, 0, x, y);
 	var width=0;
 	for (var i=0; i<menuItems.length; i++) {
-		menu.subRegion.push( (function() {
+		PD.pushRegion( (function() {
 			var item= new ButtonRegion(menuItems[i].name, 0, i);
 			item.selectFunction=menuItems[i].selectFunction;
 			if (item.width>width) {
@@ -517,16 +534,14 @@ function createMenu(name, menuItems, x, y) {
 			}
 			item.select();
 			return item;
-		})());
+		})(), menu);
 	}
 	menu.width=width;
 	menu.height=menuItems.length;
-	menu.selectFunction= function() {bindings.testMenu(this)};
+	menu.selectFunction= function() {doNothing()};
 	menu.select();
 	menu.hydrate();
 	return menu;
 };
-	
-
 
 terminal.tabsize=4;
