@@ -61,6 +61,149 @@
 		}
 	}
 	
+	PD.otherTextEditorBindings = function(that) {
+		// Backspace
+		PD.setBinding(8, "normal", function(){that.backspace()});
+		PD.setBinding(8, "shift", function(){that.backspace()});
+		
+		// Tab
+		PD.setBinding(9, "normal", function(){that.print('\t')});
+		
+		// Enter
+		PD.setBinding(13, "normal", function(){that.print('\r\n')});
+		PD.setBinding(13, "shift", function(){that.print('\r\n')});
+
+		// Caps Lock
+		PD.setBinding(20, "normal", function(){PD.toggleCapsLock()});
+		
+		// Space
+		PD.setBinding(32, "normal", function(){that.print(' ')});
+		PD.setBinding(32, "shift", function(){that.print(' ')});
+		
+		// Page Up
+		PD.setBinding(33, "normal", function(){that.pageUp()}); // not implemented until we do scroll
+		
+		// Page Down
+		PD.setBinding(34, "normal", function(){that.pageDown()});
+		
+		// End
+		PD.setBinding(35, "normal", function(){that.end()});
+		
+		// Home
+		PD.setBinding(36, "normal", function(){that.home()});
+		
+		// Left Arrow
+		PD.setBinding(37, "normal", function(){that.cursorLeft()});
+		
+		// Up Arrow
+		PD.setBinding(38, "normal", function(){that.cursorUp()});
+		
+		// Right Arrow
+		PD.setBinding(39, "normal", function(){that.cursorRight()});
+		
+		// Down Arrow
+		PD.setBinding(40, "normal", function(){that.cursorDown()});
+		
+		// Insert
+		PD.setBinding(45, "normal", function(){toggleInsertMode()});
+
+		// Delete
+		PD.setBinding(46, "normal", function(){that.deleteKey()});
+
+		// Numpad 0
+		PD.setBinding(96, "normal", function(){PD.colourMode="black"});
+
+		// Numpad 1
+		PD.setBinding(97, "normal", function(){PD.colourMode="red"});
+		
+		// Numpad 2
+		PD.setBinding(98, "normal", function(){PD.colourMode="green"});
+		
+		// Numpad 3
+		PD.setBinding(99, "normal", function(){PD.toggleUnderlined()});
+		
+		// Numpad 4
+		PD.setBinding(100, "normal", function(){PD.toggleBold()});
+		
+		// Numpad 5
+		PD.setBinding(101, "normal", function(){PD.toggleItalics()});
+		
+		// Semi-colon
+		PD.setBinding(186, "normal", function(){that.print(';')});
+		PD.setBinding(186, "shift", function(){that.print(':')});
+		
+		// Equals
+		PD.setBinding(187, "normal", function(){that.print('=')});
+		PD.setBinding(187, "shift", function(){that.print('+')});
+		
+		// Comma
+		PD.setBinding(188, "normal", function(){that.print(',')});
+		PD.setBinding(188, "shift", function(){that.print('<')});
+		
+		// Hyphen
+		PD.setBinding(189, "normal", function(){that.print('-')});
+		PD.setBinding(189, "shift", function(){that.print('_')});
+		
+		// Full Stop
+		PD.setBinding(190, "normal", function(){that.print('.')});
+		PD.setBinding(190, "shift", function(){that.print('>')});
+		
+		// Forward Slash
+		PD.setBinding(191, "normal", function(){that.print('/')});
+		PD.setBinding(191, "shift", function(){that.print('?')});
+		
+		// Apostrophe
+		PD.setBinding(192, "normal", function(){that.print('\'')});
+		PD.setBinding(192, "shift", function(){that.print('@')});
+		
+		// Open Bracket
+		PD.setBinding(219, "normal", function(){that.print('[')});
+		PD.setBinding(219, "shift", function(){that.print('{')});
+		
+		// Back Slash
+		PD.setBinding(220, "normal", function(){that.print('\\')});
+		PD.setBinding(220, "shift", function(){that.print('|')});
+		
+		// Close Bracket
+		PD.setBinding(221, "normal", function(){that.print(']')});
+		PD.setBinding(221, "shift", function(){that.print('}')});
+		
+		// Hash
+		PD.setBinding(222, "normal", function(){that.print('#')});
+		PD.setBinding(222, "shift", function(){that.print('~')});
+
+		// 0 to 9
+		PD.setBinding(48, "normal", function(){that.print('0')});
+		PD.setBinding(48, "shift", function(){that.print(')')});
+		
+		PD.setBinding(49, "normal", function(){that.print('1')});
+		PD.setBinding(49, "shift", function(){that.print('!')});
+		
+		PD.setBinding(50, "normal", function(){that.print('2')});
+		PD.setBinding(50, "shift", function(){that.print('"')});
+		
+		PD.setBinding(51, "normal", function(){that.print('3')});
+		PD.setBinding(51, "shift", function(){that.print('\u00A3')});
+		
+		PD.setBinding(52, "normal", function(){that.print('4')});
+		PD.setBinding(52, "shift", function(){that.print('$')});
+		
+		PD.setBinding(53, "normal", function(){that.print('5')});
+		PD.setBinding(53, "shift", function(){that.print('%')});
+		
+		PD.setBinding(54, "normal", function(){that.print('6')});
+		PD.setBinding(54, "shift", function(){that.print('^')});
+		
+		PD.setBinding(55, "normal", function(){that.print('7')});
+		PD.setBinding(55, "shift", function(){that.print('&')});
+		
+		PD.setBinding(56, "normal", function(){that.print('8')});
+		PD.setBinding(56, "shift", function(){that.print('*')});
+		
+		PD.setBinding(57, "normal", function(){that.print('9')});
+		PD.setBinding(57, "shift", function(){that.print('(')});
+	};
+	
 	PD.textEditorAtoZ = function(that) {
 		PD.setBinding(65, "normal", function(){that.print('a')});
 		PD.setBinding(65, "shift", function(){that.print('A')});
@@ -139,7 +282,7 @@
 		
 		PD.setBinding(90, "normal", function(){that.print('z')});
 		PD.setBinding(90, "shift", function(){that.print('Z')});
-	}
+	};
 
 	PD.capsLockBindings = function(that) {
 		PD.setBinding(65, "shift", function(){that.print('a')});
@@ -223,6 +366,9 @@
 	
 	// what about caps lock?
 	function greek() {
+		// Space
+		PD.setBinding(32, "normal", function(){PD.selected.print('\u2022');
+	
 		// Alpha
 		PD.setBinding(65, "normal", function(){PD.selected.print('\u03b1')});
 		PD.setBinding(65, "shift", function(){PD.selected.print('\u0391')});
@@ -441,6 +587,8 @@
 	}
 
 	window.onkeydown = checkKey;
+	
+	window.onkeyup = checkEm;
 
 	function checkKey(e)
 	{
@@ -486,6 +634,14 @@
 		keys[e.keyCode].normal();
 		return;
 	}
+	
+	// :(
+	function checkEm(e) {
+		if (e.keyCode==18) {
+			PD.altMode = false;
+			terminal.reDraw();
+		}
+	};
 })();
 
 // Bindings store //
