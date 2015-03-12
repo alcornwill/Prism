@@ -367,7 +367,7 @@
 	// what about caps lock?
 	function greek() {
 		// Space
-		PD.setBinding(32, "normal", function(){PD.selected.print('\u2022');
+		PD.setBinding(32, "normal", function(){PD.selected.print('\u2022')});
 	
 		// Alpha
 		PD.setBinding(65, "normal", function(){PD.selected.print('\u03b1')});

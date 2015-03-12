@@ -4,6 +4,8 @@ function doNothing() {};
 
 // I have to draw a circle with Math stuff :^)
 
+// need changing() wrapper that adds this.changed to functions
+
 // I don't really understand what selected is. It's mainly just so that escape works. But it's really difficult to know what should be selectable and when I don't have many scenarios yet. It could just be a duck test thing.
 
 String.prototype.toSpan= function(colour, background) {
@@ -34,15 +36,8 @@ PD.pushRegion = function(region, pushTo) {
 PD.altMode = false;
 
 PD.toggleAltMode = function() {
-	PD.altMode
-	? (function(){
-		PD.altMode = false;
-		terminal.reDraw();
-	})()
-	: (function(){
-		PD.altMode = true;
-		terminal.reDraw();
-	})();
+	PD.altMode = true;
+	terminal.reDraw();
 };
 
 (function() {
@@ -102,11 +97,14 @@ PD.toggleAltMode = function() {
 	};
 	PD.escape = function() {
 		var item = PD.selected;
-		if (item.name.endsWith("Menu")) {
-			// Here's how it should work. When we select a contextual menu, through it's binding, the contextual menu has a special selectFunction which saves PD.selected to this.previouslySelected or something. Then we just select previouslySelected here. This is assuming that we don't want to create and kill a contextual menu every time, which I think is fair. We might never want to kill anything at all.
-			select(item.parent);
-			terminal.reDraw(); // later I could work on a thing that only reDraws if an that exceeds it's parent region has changed, and only do parent.changed otherwise.
+		if (item.hasOwnProperty("previouslySelected")) {
+			if (item.previouslySelected) {
+				select(item.previouslySelected);
+			}
 		}
+			// Here's how it should work. When we select a contextual menu, through it's binding, the contextual menu has a special selectFunction which saves PD.selected to this.previouslySelected or something. Then we just select previouslySelected here. This is assuming that we don't want to create and kill a contextual menu every time, which I think is fair. We might never want to kill anything at all.
+			// terminal.reDraw(); // later I could work on a thing that only reDraws if an that exceeds it's parent region has changed, and only do parent.changed otherwise.
+		
 	};
 })();
 
@@ -239,7 +237,9 @@ function Region(name, width, height, x, y) {
 	this.setBindings = function(){
 		this.bindings(this);
 	};
+	this.selectFunction = function() {doNothing()};
 	this.select = function() {
+		this.selectFunction();
 		PD.setSelected(this);
 	}; 
 	this.hydrate = function() {
@@ -613,8 +613,8 @@ var TextRegion = {};
 EditableTextRegion.prototype = new Region("EditableTextRegion");
 TextRegion.prototype = new Region("TextRegion");
 
-// Every button has a shortcut. Needs an toggleAltMode method that toggles <u></u> around a chosen (or programmaticly chosen) letter.
-// Does need to be encoded if you want to have funky greek letters.
+// Every button has a shortcut. I think the index should be chosen programmatically, and it might be easy. altBuffer should only be seen when the bindings are active.
+// Still doesn't support funky greek letters.
 // ie. all text should be encoded text duuuhhhh.
 function ButtonRegion(name, binding, x, y, index) {
 	this.name=name+"Button";
@@ -744,9 +744,7 @@ function initDesktopMenu() {
 	return createTopBar("Desktop", menuItems);
 }
 	
-// The menu items should change depending on the selected program.
-// have a subRegions parameter?
-// if this menu is sele
+// The menu items are composed by the desktop and the selected program.
 function createTopBar(name, menuItems) {
 	var menu=new VanillaRegion(name+"TopBar", 1, 1);
 	var totalWidth=0;
@@ -770,7 +768,7 @@ function createTopBar(name, menuItems) {
 	return menu;
 }
 
-// for contextual menus update should be, if this!==PD.selected then turn invisible
+// This should really be called a contextual menu. It shares some behaviour with a pop-up message.
 function createMenu(name, menuItems, x, y) { 
 	var menu=new VanillaRegion(name+"Menu", 0, 0, x, y);
 	var width=0;
@@ -791,6 +789,12 @@ function createMenu(name, menuItems, x, y) {
 		? menu.visible=true
 		: menu.visible=false;
 	}
+	menu.selectFunction = function() {
+		if (PD.selected!==menu) {
+			menu.previouslySelected = PD.selected;
+		}
+	};
+	menu.previouslySelected=0;
 	menu.hydrate();
 	return menu;
 };
