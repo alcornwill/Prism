@@ -11,25 +11,26 @@
 		this.altCtrl = function(){doNothing()};
 		this.shiftAltCtrl = function(){doNothing()};
 		this.preventDefault = true
-	}
+	};
 
 	PD.initKeys = function() {
 		for (var i=0; i<=222; i++)
 		{
 			keys[i] = new key();
 		}
-	}
+	};
 	
-	PD.contextMenuBindings = function() {
-		// really not sure about this
-		// Is it the respontiblity of the region to unbind()?
-		resetTextBindings();
-		PD.setBinding(27, "normal", function(){PD.escape()});
-		// more alt + letter bindings go here
-		// cursor keys
-	}
+	PD.setBindings= function(bindings) {
+		for (var i=0; i<bindings.length; i++) {
+			PD.setBinding(bindings[i]);
+		}
+	};
 	
-	PD.setBinding = function(key, modifier, action) {
+	PD.setBinding = function(binding) {
+		var key = binding[0];
+		var modifier = binding[1];
+		var action = binding[2];
+		
 		switch(modifier) {
 			case "normal":
 				keys[key].normal = action;
@@ -62,528 +63,536 @@
 	}
 	
 	PD.otherTextEditorBindings = function(that) {
-		// Backspace
-		PD.setBinding(8, "normal", function(){that.backspace()});
-		PD.setBinding(8, "shift", function(){that.backspace()});
-		
-		// Tab
-		PD.setBinding(9, "normal", function(){that.print('\t')});
-		
-		// Enter
-		PD.setBinding(13, "normal", function(){that.print('\r\n')});
-		PD.setBinding(13, "shift", function(){that.print('\r\n')});
+		return [
+			// Backspace
+			[8, "normal", function(){that.backspace()}],
+			[8, "shift", function(){that.backspace()}],
+			
+			// Tab
+			[9, "normal", function(){that.print('\t')}],
+			
+			// Enter
+			[13, "normal", function(){that.print('\r\n')}],
+			[13, "shift", function(){that.print('\r\n')}],
 
-		// Caps Lock
-		PD.setBinding(20, "normal", function(){PD.toggleCapsLock()});
-		
-		// Space
-		PD.setBinding(32, "normal", function(){that.print(' ')});
-		PD.setBinding(32, "shift", function(){that.print(' ')});
-		
-		// Page Up
-		PD.setBinding(33, "normal", function(){that.pageUp()}); // not implemented until we do scroll
-		
-		// Page Down
-		PD.setBinding(34, "normal", function(){that.pageDown()});
-		
-		// End
-		PD.setBinding(35, "normal", function(){that.end()});
-		
-		// Home
-		PD.setBinding(36, "normal", function(){that.home()});
-		
-		// Left Arrow
-		PD.setBinding(37, "normal", function(){that.cursorLeft()});
-		
-		// Up Arrow
-		PD.setBinding(38, "normal", function(){that.cursorUp()});
-		
-		// Right Arrow
-		PD.setBinding(39, "normal", function(){that.cursorRight()});
-		
-		// Down Arrow
-		PD.setBinding(40, "normal", function(){that.cursorDown()});
-		
-		// Insert
-		PD.setBinding(45, "normal", function(){toggleInsertMode()});
+			// Caps Lock
+			[20, "normal", function(){that.toggleCapsLock()}],
+			
+			// Space
+			[32, "normal", function(){that.print(' ')}],
+			[32, "shift", function(){that.print(' ')}],
+			
+			// Page Up
+			[33, "normal", function(){that.pageUp()}], // not implemented until we do scroll
+			
+			// Page Down
+			[34, "normal", function(){that.pageDown()}],
+			
+			// End
+			[35, "normal", function(){that.end()}],
+			
+			// Home
+			[36, "normal", function(){that.home()}],
+			
+			// Left Arrow
+			[37, "normal", function(){that.cursorLeft()}],
+			
+			// Up Arrow
+			[38, "normal", function(){that.cursorUp()}],
+			
+			// Right Arrow
+			[39, "normal", function(){that.cursorRight()}],
+			
+			// Down Arrow
+			[40, "normal", function(){that.cursorDown()}],
+			
+			// Insert
+			[45, "normal", function(){toggleInsertMode()}],
 
-		// Delete
-		PD.setBinding(46, "normal", function(){that.deleteKey()});
+			// Delete
+			[46, "normal", function(){that.deleteKey()}],
 
-		// Numpad 0
-		PD.setBinding(96, "normal", function(){PD.colourMode="black"});
+			// Numpad 0
+			[96, "normal", function(){PD.colourMode="black"}],
 
-		// Numpad 1
-		PD.setBinding(97, "normal", function(){PD.colourMode="red"});
-		
-		// Numpad 2
-		PD.setBinding(98, "normal", function(){PD.colourMode="green"});
-		
-		// Numpad 3
-		PD.setBinding(99, "normal", function(){PD.toggleUnderlined()});
-		
-		// Numpad 4
-		PD.setBinding(100, "normal", function(){PD.toggleBold()});
-		
-		// Numpad 5
-		PD.setBinding(101, "normal", function(){PD.toggleItalics()});
-		
-		// Semi-colon
-		PD.setBinding(186, "normal", function(){that.print(';')});
-		PD.setBinding(186, "shift", function(){that.print(':')});
-		
-		// Equals
-		PD.setBinding(187, "normal", function(){that.print('=')});
-		PD.setBinding(187, "shift", function(){that.print('+')});
-		
-		// Comma
-		PD.setBinding(188, "normal", function(){that.print(',')});
-		PD.setBinding(188, "shift", function(){that.print('<')});
-		
-		// Hyphen
-		PD.setBinding(189, "normal", function(){that.print('-')});
-		PD.setBinding(189, "shift", function(){that.print('_')});
-		
-		// Full Stop
-		PD.setBinding(190, "normal", function(){that.print('.')});
-		PD.setBinding(190, "shift", function(){that.print('>')});
-		
-		// Forward Slash
-		PD.setBinding(191, "normal", function(){that.print('/')});
-		PD.setBinding(191, "shift", function(){that.print('?')});
-		
-		// Apostrophe
-		PD.setBinding(192, "normal", function(){that.print('\'')});
-		PD.setBinding(192, "shift", function(){that.print('@')});
-		
-		// Open Bracket
-		PD.setBinding(219, "normal", function(){that.print('[')});
-		PD.setBinding(219, "shift", function(){that.print('{')});
-		
-		// Back Slash
-		PD.setBinding(220, "normal", function(){that.print('\\')});
-		PD.setBinding(220, "shift", function(){that.print('|')});
-		
-		// Close Bracket
-		PD.setBinding(221, "normal", function(){that.print(']')});
-		PD.setBinding(221, "shift", function(){that.print('}')});
-		
-		// Hash
-		PD.setBinding(222, "normal", function(){that.print('#')});
-		PD.setBinding(222, "shift", function(){that.print('~')});
+			// Numpad 1
+			[97, "normal", function(){PD.colourMode="red"}],
+			
+			// Numpad 2
+			[98, "normal", function(){PD.colourMode="green"}],
+			
+			// Numpad 3
+			[99, "normal", function(){PD.toggleUnderlined()}],
+			
+			// Numpad 4
+			[100, "normal", function(){PD.toggleBold()}],
+			
+			// Numpad 5
+			[101, "normal", function(){PD.toggleItalics()}],
+			
+			// Semi-colon
+			[186, "normal", function(){that.print(';')}],
+			[186, "shift", function(){that.print(':')}],
+			
+			// Equals
+			[187, "normal", function(){that.print('=')}],
+			[187, "shift", function(){that.print('+')}],
+			
+			// Comma
+			[188, "normal", function(){that.print(',')}],
+			[188, "shift", function(){that.print('<')}],
+			
+			// Hyphen
+			[189, "normal", function(){that.print('-')}],
+			[189, "shift", function(){that.print('_')}],
+			
+			// Full Stop
+			[190, "normal", function(){that.print('.')}],
+			[190, "shift", function(){that.print('>')}],
+			
+			// Forward Slash
+			[191, "normal", function(){that.print('/')}],
+			[191, "shift", function(){that.print('?')}],
+			
+			// Apostrophe
+			[192, "normal", function(){that.print('\'')}],
+			[192, "shift", function(){that.print('@')}],
+			
+			// Open Bracket
+			[219, "normal", function(){that.print('[')}],
+			[219, "shift", function(){that.print('{')}],
+			
+			// Back Slash
+			[220, "normal", function(){that.print('\\')}],
+			[220, "shift", function(){that.print('|')}],
+			
+			// Close Bracket
+			[221, "normal", function(){that.print(']')}],
+			[221, "shift", function(){that.print('}')}],
+			
+			// Hash
+			[222, "normal", function(){that.print('#')}],
+			[222, "shift", function(){that.print('~')}],
 
-		// 0 to 9
-		PD.setBinding(48, "normal", function(){that.print('0')});
-		PD.setBinding(48, "shift", function(){that.print(')')});
-		
-		PD.setBinding(49, "normal", function(){that.print('1')});
-		PD.setBinding(49, "shift", function(){that.print('!')});
-		
-		PD.setBinding(50, "normal", function(){that.print('2')});
-		PD.setBinding(50, "shift", function(){that.print('"')});
-		
-		PD.setBinding(51, "normal", function(){that.print('3')});
-		PD.setBinding(51, "shift", function(){that.print('\u00A3')});
-		
-		PD.setBinding(52, "normal", function(){that.print('4')});
-		PD.setBinding(52, "shift", function(){that.print('$')});
-		
-		PD.setBinding(53, "normal", function(){that.print('5')});
-		PD.setBinding(53, "shift", function(){that.print('%')});
-		
-		PD.setBinding(54, "normal", function(){that.print('6')});
-		PD.setBinding(54, "shift", function(){that.print('^')});
-		
-		PD.setBinding(55, "normal", function(){that.print('7')});
-		PD.setBinding(55, "shift", function(){that.print('&')});
-		
-		PD.setBinding(56, "normal", function(){that.print('8')});
-		PD.setBinding(56, "shift", function(){that.print('*')});
-		
-		PD.setBinding(57, "normal", function(){that.print('9')});
-		PD.setBinding(57, "shift", function(){that.print('(')});
+			// 0 to 9
+			[48, "normal", function(){that.print('0')}],
+			[48, "shift", function(){that.print(')')}],
+			
+			[49, "normal", function(){that.print('1')}],
+			[49, "shift", function(){that.print('!')}],
+			
+			[50, "normal", function(){that.print('2')}],
+			[50, "shift", function(){that.print('"')}],
+			
+			[51, "normal", function(){that.print('3')}],
+			[51, "shift", function(){that.print('\u00A3')}],
+			
+			[52, "normal", function(){that.print('4')}],
+			[52, "shift", function(){that.print('$')}],
+			
+			[53, "normal", function(){that.print('5')}],
+			[53, "shift", function(){that.print('%')}],
+			
+			[54, "normal", function(){that.print('6')}],
+			[54, "shift", function(){that.print('^')}],
+			
+			[55, "normal", function(){that.print('7')}],
+			[55, "shift", function(){that.print('&')}],
+			
+			[56, "normal", function(){that.print('8')}],
+			[56, "shift", function(){that.print('*')}],
+			
+			[57, "normal", function(){that.print('9')}],
+			[57, "shift", function(){that.print('(')}]
+		];
 	};
 	
 	PD.textEditorAtoZ = function(that) {
-		PD.setBinding(65, "normal", function(){that.print('a')});
-		PD.setBinding(65, "shift", function(){that.print('A')});
-		
-		PD.setBinding(66, "normal", function(){that.print('b')});
-		PD.setBinding(66, "shift", function(){that.print('B')});
-		
-		PD.setBinding(67, "normal", function(){that.print('c')});
-		PD.setBinding(67, "shift", function(){that.print('C')});
-		
-		PD.setBinding(68, "normal", function(){that.print('d')});
-		PD.setBinding(68, "shift", function(){that.print('D')});
-		
-		PD.setBinding(69, "normal", function(){that.print('e')});
-		PD.setBinding(69, "shift", function(){that.print('E')});
-		
-		PD.setBinding(70, "normal", function(){that.print('f')});
-		PD.setBinding(70, "shift", function(){that.print('F')});
-		
-		PD.setBinding(71, "normal", function(){that.print('g')});
-		PD.setBinding(71, "shift", function(){that.print('G')});
-		
-		PD.setBinding(72, "normal", function(){that.print('h')});
-		PD.setBinding(72, "shift", function(){that.print('H')});
-		
-		PD.setBinding(73, "normal", function(){that.print('i')});
-		PD.setBinding(73, "shift", function(){that.print('I')});
-		
-		PD.setBinding(74, "normal", function(){that.print('j')});
-		PD.setBinding(74, "shift", function(){that.print('J')});
-		
-		PD.setBinding(75, "normal", function(){that.print('k')});
-		PD.setBinding(75, "shift", function(){that.print('K')});
-		
-		PD.setBinding(76, "normal", function(){that.print('l')});
-		PD.setBinding(76, "shift", function(){that.print('L')});
-		
-		PD.setBinding(77, "normal", function(){that.print('m')});
-		PD.setBinding(77, "shift", function(){that.print('M')});
-		
-		PD.setBinding(78, "normal", function(){that.print('n')});
-		PD.setBinding(78, "shift", function(){that.print('N')});
-		
-		PD.setBinding(79, "normal", function(){that.print('o')});
-		PD.setBinding(79, "shift", function(){that.print('O')});
-		
-		PD.setBinding(80, "normal", function(){that.print('p')});
-		PD.setBinding(80, "shift", function(){that.print('P')});
-		
-		PD.setBinding(81, "normal", function(){that.print('q')});
-		PD.setBinding(81, "shift", function(){that.print('Q')});
-		
-		PD.setBinding(82, "normal", function(){that.print('r')});
-		PD.setBinding(82, "shift", function(){that.print('R')});
-		
-		PD.setBinding(83, "normal", function(){that.print('s')});
-		PD.setBinding(83, "shift", function(){that.print('S')});
-		
-		PD.setBinding(84, "normal", function(){that.print('t')});
-		PD.setBinding(84, "shift", function(){that.print('T')});
-		
-		PD.setBinding(85, "normal", function(){that.print('u')});
-		PD.setBinding(85, "shift", function(){that.print('U')});
-		
-		PD.setBinding(86, "normal", function(){that.print('v')});
-		PD.setBinding(86, "shift", function(){that.print('V')});
-		
-		PD.setBinding(87, "normal", function(){that.print('w')});
-		PD.setBinding(87, "shift", function(){that.print('W')});
-		
-		PD.setBinding(88, "normal", function(){that.print('x')});
-		PD.setBinding(88, "shift", function(){that.print('X')});
-		
-		PD.setBinding(89, "normal", function(){that.print('y')});
-		PD.setBinding(89, "shift", function(){that.print('Y')});
-		
-		PD.setBinding(90, "normal", function(){that.print('z')});
-		PD.setBinding(90, "shift", function(){that.print('Z')});
+		return [
+			[65, "normal", function(){that.print('a')}],
+			[65, "shift", function(){that.print('A')}],
+			
+			[66, "normal", function(){that.print('b')}],
+			[66, "shift", function(){that.print('B')}],
+			
+			[67, "normal", function(){that.print('c')}],
+			[67, "shift", function(){that.print('C')}],
+			
+			[68, "normal", function(){that.print('d')}],
+			[68, "shift", function(){that.print('D')}],
+			
+			[69, "normal", function(){that.print('e')}],
+			[69, "shift", function(){that.print('E')}],
+			
+			[70, "normal", function(){that.print('f')}],
+			[70, "shift", function(){that.print('F')}],
+			
+			[71, "normal", function(){that.print('g')}],
+			[71, "shift", function(){that.print('G')}],
+			
+			[72, "normal", function(){that.print('h')}],
+			[72, "shift", function(){that.print('H')}],
+			
+			[73, "normal", function(){that.print('i')}],
+			[73, "shift", function(){that.print('I')}],
+			
+			[74, "normal", function(){that.print('j')}],
+			[74, "shift", function(){that.print('J')}],
+			
+			[75, "normal", function(){that.print('k')}],
+			[75, "shift", function(){that.print('K')}],
+			
+			[76, "normal", function(){that.print('l')}],
+			[76, "shift", function(){that.print('L')}],
+			
+			[77, "normal", function(){that.print('m')}],
+			[77, "shift", function(){that.print('M')}],
+			
+			[78, "normal", function(){that.print('n')}],
+			[78, "shift", function(){that.print('N')}],
+			
+			[79, "normal", function(){that.print('o')}],
+			[79, "shift", function(){that.print('O')}],
+			
+			[80, "normal", function(){that.print('p')}],
+			[80, "shift", function(){that.print('P')}],
+			
+			[81, "normal", function(){that.print('q')}],
+			[81, "shift", function(){that.print('Q')}],
+			
+			[82, "normal", function(){that.print('r')}],
+			[82, "shift", function(){that.print('R')}],
+			
+			[83, "normal", function(){that.print('s')}],
+			[83, "shift", function(){that.print('S')}],
+			
+			[84, "normal", function(){that.print('t')}],
+			[84, "shift", function(){that.print('T')}],
+			
+			[85, "normal", function(){that.print('u')}],
+			[85, "shift", function(){that.print('U')}],
+			
+			[86, "normal", function(){that.print('v')}],
+			[86, "shift", function(){that.print('V')}],
+			
+			[87, "normal", function(){that.print('w')}],
+			[87, "shift", function(){that.print('W')}],
+			
+			[88, "normal", function(){that.print('x')}],
+			[88, "shift", function(){that.print('X')}],
+			
+			[89, "normal", function(){that.print('y')}],
+			[89, "shift", function(){that.print('Y')}],
+			
+			[90, "normal", function(){that.print('z')}],
+			[90, "shift", function(){that.print('Z')}]
+		];
 	};
 
 	PD.capsLockBindings = function(that) {
-		PD.setBinding(65, "shift", function(){that.print('a')});
-		PD.setBinding(65, "normal", function(){that.print('A')});
-		
-		PD.setBinding(66, "shift", function(){that.print('b')});
-		PD.setBinding(66, "normal", function(){that.print('B')});
-		
-		PD.setBinding(67, "shift", function(){that.print('c')});
-		PD.setBinding(67, "normal", function(){that.print('C')});
-		
-		PD.setBinding(68, "shift", function(){that.print('d')});
-		PD.setBinding(68, "normal", function(){that.print('D')});
-		
-		PD.setBinding(69, "shift", function(){that.print('e')});
-		PD.setBinding(69, "normal", function(){that.print('E')});
-		
-		PD.setBinding(70, "shift", function(){that.print('f')});
-		PD.setBinding(70, "normal", function(){that.print('F')});
-		
-		PD.setBinding(71, "shift", function(){that.print('g')});
-		PD.setBinding(71, "normal", function(){that.print('G')});
-		
-		PD.setBinding(72, "shift", function(){that.print('h')});
-		PD.setBinding(72, "normal", function(){that.print('H')});
-		
-		PD.setBinding(73, "shift", function(){that.print('i')});
-		PD.setBinding(73, "normal", function(){that.print('I')});
-		
-		PD.setBinding(74, "shift", function(){that.print('j')});
-		PD.setBinding(74, "normal", function(){that.print('J')});
-		
-		PD.setBinding(75, "shift", function(){that.print('k')});
-		PD.setBinding(75, "normal", function(){that.print('K')});
-		
-		PD.setBinding(76, "shift", function(){that.print('l')});
-		PD.setBinding(76, "normal", function(){that.print('L')});
-		
-		PD.setBinding(77, "shift", function(){that.print('m')});
-		PD.setBinding(77, "normal", function(){that.print('M')});
-		
-		PD.setBinding(78, "shift", function(){that.print('n')});
-		PD.setBinding(78, "normal", function(){that.print('N')});
-		
-		PD.setBinding(79, "shift", function(){that.print('o')});
-		PD.setBinding(79, "normal", function(){that.print('O')});
-		
-		PD.setBinding(80, "shift", function(){that.print('p')});
-		PD.setBinding(80, "normal", function(){that.print('P')});
-		
-		PD.setBinding(81, "shift", function(){that.print('q')});
-		PD.setBinding(81, "normal", function(){that.print('Q')});
-		
-		PD.setBinding(82, "shift", function(){that.print('r')});
-		PD.setBinding(82, "normal", function(){that.print('R')});
-		
-		PD.setBinding(83, "shift", function(){that.print('s')});
-		PD.setBinding(83, "normal", function(){that.print('S')});
-		
-		PD.setBinding(84, "shift", function(){that.print('t')});
-		PD.setBinding(84, "normal", function(){that.print('T')});
-		
-		PD.setBinding(85, "shift", function(){that.print('u')});
-		PD.setBinding(85, "normal", function(){that.print('U')});
-		
-		PD.setBinding(86, "shift", function(){that.print('v')});
-		PD.setBinding(86, "normal", function(){that.print('V')});
-		
-		PD.setBinding(87, "shift", function(){that.print('w')});
-		PD.setBinding(87, "normal", function(){that.print('W')});
-		
-		PD.setBinding(88, "shift", function(){that.print('x')});
-		PD.setBinding(88, "normal", function(){that.print('X')});
-		
-		PD.setBinding(89, "shift", function(){that.print('y')});
-		PD.setBinding(89, "normal", function(){that.print('Y')});
-		
-		PD.setBinding(90, "shift", function(){that.print('z')});
-		PD.setBinding(90, "normal", function(){that.print('Z')});
+		return [
+			[65, "shift", function(){that.print('a')}],
+			[65, "normal", function(){that.print('A')}],
+			
+			[66, "shift", function(){that.print('b')}],
+			[66, "normal", function(){that.print('B')}],
+			
+			[67, "shift", function(){that.print('c')}],
+			[67, "normal", function(){that.print('C')}],
+			
+			[68, "shift", function(){that.print('d')}],
+			[68, "normal", function(){that.print('D')}],
+			
+			[69, "shift", function(){that.print('e')}],
+			[69, "normal", function(){that.print('E')}],
+			
+			[70, "shift", function(){that.print('f')}],
+			[70, "normal", function(){that.print('F')}],
+			
+			[71, "shift", function(){that.print('g')}],
+			[71, "normal", function(){that.print('G')}],
+			
+			[72, "shift", function(){that.print('h')}],
+			[72, "normal", function(){that.print('H')}],
+			
+			[73, "shift", function(){that.print('i')}],
+			[73, "normal", function(){that.print('I')}],
+			
+			[74, "shift", function(){that.print('j')}],
+			[74, "normal", function(){that.print('J')}],
+			
+			[75, "shift", function(){that.print('k')}],
+			[75, "normal", function(){that.print('K')}],
+			
+			[76, "shift", function(){that.print('l')}],
+			[76, "normal", function(){that.print('L')}],
+			
+			[77, "shift", function(){that.print('m')}],
+			[77, "normal", function(){that.print('M')}],
+			
+			[78, "shift", function(){that.print('n')}],
+			[78, "normal", function(){that.print('N')}],
+			
+			[79, "shift", function(){that.print('o')}],
+			[79, "normal", function(){that.print('O')}],
+			
+			[80, "shift", function(){that.print('p')}],
+			[80, "normal", function(){that.print('P')}],
+			
+			[81, "shift", function(){that.print('q')}],
+			[81, "normal", function(){that.print('Q')}],
+			
+			[82, "shift", function(){that.print('r')}],
+			[82, "normal", function(){that.print('R')}],
+			
+			[83, "shift", function(){that.print('s')}],
+			[83, "normal", function(){that.print('S')}],
+			
+			[84, "shift", function(){that.print('t')}],
+			[84, "normal", function(){that.print('T')}],
+			
+			[85, "shift", function(){that.print('u')}],
+			[85, "normal", function(){that.print('U')}],
+			
+			[86, "shift", function(){that.print('v')}],
+			[86, "normal", function(){that.print('V')}],
+			
+			[87, "shift", function(){that.print('w')}],
+			[87, "normal", function(){that.print('W')}],
+			
+			[88, "shift", function(){that.print('x')}],
+			[88, "normal", function(){that.print('X')}],
+			
+			[89, "shift", function(){that.print('y')}],
+			[89, "normal", function(){that.print('Y')}],
+			
+			[90, "shift", function(){that.print('z')}],
+			[90, "normal", function(){that.print('Z')}]
+		];
 	}
 	
 	// what about caps lock?
 	function greek() {
-		// Space
-		PD.setBinding(32, "normal", function(){PD.selected.print('\u2022')});
-	
-		// Alpha
-		PD.setBinding(65, "normal", function(){PD.selected.print('\u03b1')});
-		PD.setBinding(65, "shift", function(){PD.selected.print('\u0391')});
+		return [
+			// Space
+			[32, "normal", function(){PD.selected.print('\u2022')}],
 		
-		// Beta
-		PD.setBinding(66, "normal", function(){PD.selected.print('\u03b2')});
-		PD.setBinding(66, "shift", function(){PD.selected.print('\u0392')});
-		
-		// Psi
-		PD.setBinding(67, "normal", function(){PD.selected.print('\u03c7')});
-		PD.setBinding(67, "shift", function(){PD.selected.print('\u03a7')});
-		
-		// Delta
-		PD.setBinding(68, "normal", function(){PD.selected.print('\u03b4')});
-		PD.setBinding(68, "shift", function(){PD.selected.print('\u0394')});
-		
-		// Epsilon
-		PD.setBinding(69, "normal", function(){PD.selected.print('\u03b5')});
-		PD.setBinding(69, "shift", function(){PD.selected.print('\u0395')});
-		
-		// Phi
-		PD.setBinding(70, "normal", function(){PD.selected.print('\u03c5')});
-		PD.setBinding(70, "shift", function(){PD.selected.print('\u03a5')});
-		
-		// Gammma
-		PD.setBinding(71, "normal", function(){PD.selected.print('\u03b3')});
-		PD.setBinding(71, "shift", function(){PD.selected.print('\u0393')});
-		
-		// Eta
-		PD.setBinding(72, "normal", function(){PD.selected.print('\u03b7')});
-		PD.setBinding(72, "shift", function(){PD.selected.print('\u0397')});
-		
-		// Iota
-		PD.setBinding(73, "normal", function(){PD.selected.print('\u03b9')});
-		PD.setBinding(73, "shift", function(){PD.selected.print('\u0399')});
-		
-		// Xi
-		PD.setBinding(74, "normal", function(){PD.selected.print('\u03be')});
-		PD.setBinding(74, "shift", function(){PD.selected.print('\u039e')});
-		
-		// Kappa
-		PD.setBinding(75, "normal", function(){PD.selected.print('\u03ba')});
-		PD.setBinding(75, "shift", function(){PD.selected.print('\u039a')});
-		
-		// Lambda
-		PD.setBinding(76, "normal", function(){PD.selected.print('\u03bb')});
-		PD.setBinding(76, "shift", function(){PD.selected.print('\u039b')});
-		
-		// Mu
-		PD.setBinding(77, "normal", function(){PD.selected.print('\u03bc')});
-		PD.setBinding(77, "shift", function(){PD.selected.print('\u039c')});
-		
-		// Nu
-		PD.setBinding(78, "normal", function(){PD.selected.print('\u03bd')});
-		PD.setBinding(78, "shift", function(){PD.selected.print('\u039d')});
-		
-		// Omicron
-		PD.setBinding(79, "normal", function(){PD.selected.print('\u03bf')});
-		PD.setBinding(79, "shift", function(){PD.selected.print('\u039f')});
-		
-		// Pi
-		PD.setBinding(80, "normal", function(){PD.selected.print('\u03c0')});
-		PD.setBinding(80, "shift", function(){PD.selected.print('\u03a0')});
-		
-		PD.setBinding(81, "normal", function(){doNothing()});
-		PD.setBinding(81, "shift", function(){doNothing()});
-		
-		// Rho
-		PD.setBinding(82, "normal", function(){PD.selected.print('\u03c1')});
-		PD.setBinding(82, "shift", function(){PD.selected.print('\u03a1')});
-		
-		// Sigma
-		PD.setBinding(83, "normal", function(){PD.selected.print('\u03c2')});
-		PD.setBinding(83, "shift", function(){PD.selected.print('\u03a3')});
-		
-		// Tau
-		PD.setBinding(84, "normal", function(){PD.selected.print('\u03c3')});
-		PD.setBinding(84, "shift", function(){PD.selected.print('\u0393')});
-		
-		// Theta
-		PD.setBinding(85, "normal", function(){PD.selected.print('\u03b8')});
-		PD.setBinding(85, "shift", function(){PD.selected.print('\u0398')});
-		
-		// Omega
-		PD.setBinding(86, "normal", function(){PD.selected.print('\u03c8')});
-		PD.setBinding(86, "shift", function(){PD.selected.print('\u03a8')});
-		
-		PD.setBinding(87, "normal", function(){doNothing()});
-		PD.setBinding(87, "shift", function(){doNothing()});
-		
-		// Chi
-		PD.setBinding(88, "normal", function(){PD.selected.print('\u03c6')});
-		PD.setBinding(88, "shift", function(){PD.selected.print('\u03a6')});
-		
-		// Upsilon
-		PD.setBinding(89, "normal", function(){PD.selected.print('\u03c4')});
-		PD.setBinding(89, "shift", function(){PD.selected.print('\u03a4')});
-		
-		// Zeta
-		PD.setBinding(90, "normal", function(){PD.selected.print('\u03b6')});
-		PD.setBinding(90, "shift", function(){PD.selected.print('\u0396')});
+			// Alpha
+			[65, "normal", function(){PD.selected.print('\u03b1')}],
+			[65, "shift", function(){PD.selected.print('\u0391')}],
+			
+			// Beta
+			[66, "normal", function(){PD.selected.print('\u03b2')}],
+			[66, "shift", function(){PD.selected.print('\u0392')}],
+			
+			// Psi
+			[67, "normal", function(){PD.selected.print('\u03c7')}],
+			[67, "shift", function(){PD.selected.print('\u03a7')}],
+			
+			// Delta
+			[68, "normal", function(){PD.selected.print('\u03b4')}],
+			[68, "shift", function(){PD.selected.print('\u0394')}],
+			
+			// Epsilon
+			[69, "normal", function(){PD.selected.print('\u03b5')}],
+			[69, "shift", function(){PD.selected.print('\u0395')}],
+			
+			// Phi
+			[70, "normal", function(){PD.selected.print('\u03c5')}],
+			[70, "shift", function(){PD.selected.print('\u03a5')}],
+			
+			// Gammma
+			[71, "normal", function(){PD.selected.print('\u03b3')}],
+			[71, "shift", function(){PD.selected.print('\u0393')}],
+			
+			// Eta
+			[72, "normal", function(){PD.selected.print('\u03b7')}],
+			[72, "shift", function(){PD.selected.print('\u0397')}],
+			
+			// Iota
+			[73, "normal", function(){PD.selected.print('\u03b9')}],
+			[73, "shift", function(){PD.selected.print('\u0399')}],
+			
+			// Xi
+			[74, "normal", function(){PD.selected.print('\u03be')}],
+			[74, "shift", function(){PD.selected.print('\u039e')}],
+			
+			// Kappa
+			[75, "normal", function(){PD.selected.print('\u03ba')}],
+			[75, "shift", function(){PD.selected.print('\u039a')}],
+			
+			// Lambda
+			[76, "normal", function(){PD.selected.print('\u03bb')}],
+			[76, "shift", function(){PD.selected.print('\u039b')}],
+			
+			// Mu
+			[77, "normal", function(){PD.selected.print('\u03bc')}],
+			[77, "shift", function(){PD.selected.print('\u039c')}],
+			
+			// Nu
+			[78, "normal", function(){PD.selected.print('\u03bd')}],
+			[78, "shift", function(){PD.selected.print('\u039d')}],
+			
+			// Omicron
+			[79, "normal", function(){PD.selected.print('\u03bf')}],
+			[79, "shift", function(){PD.selected.print('\u039f')}],
+			
+			// Pi
+			[80, "normal", function(){PD.selected.print('\u03c0')}],
+			[80, "shift", function(){PD.selected.print('\u03a0')}],
+			
+			[81, "normal", function(){doNothing()}],
+			[81, "shift", function(){doNothing()}],
+			
+			// Rho
+			[82, "normal", function(){PD.selected.print('\u03c1')}],
+			[82, "shift", function(){PD.selected.print('\u03a1')}],
+			
+			// Sigma
+			[83, "normal", function(){PD.selected.print('\u03c2')}],
+			[83, "shift", function(){PD.selected.print('\u03a3')}],
+			
+			// Tau
+			[84, "normal", function(){PD.selected.print('\u03c3')}],
+			[84, "shift", function(){PD.selected.print('\u0393')}],
+			
+			// Theta
+			[85, "normal", function(){PD.selected.print('\u03b8')}],
+			[85, "shift", function(){PD.selected.print('\u0398')}],
+			
+			// Omega
+			[86, "normal", function(){PD.selected.print('\u03c8')}],
+			[86, "shift", function(){PD.selected.print('\u03a8')}],
+			
+			[87, "normal", function(){doNothing()}],
+			[87, "shift", function(){doNothing()}],
+			
+			// Chi
+			[88, "normal", function(){PD.selected.print('\u03c6')}],
+			[88, "shift", function(){PD.selected.print('\u03a6')}],
+			
+			// Upsilon
+			[89, "normal", function(){PD.selected.print('\u03c4')}],
+			[89, "shift", function(){PD.selected.print('\u03a4')}],
+			
+			// Zeta
+			[90, "normal", function(){PD.selected.print('\u03b6')}],
+			[90, "shift", function(){PD.selected.print('\u0396')}]
+		];
 	}
 	
 	resetTextBindings = function() {
-		// I wonder if I could do this with a for loop lol
-		PD.setBinding(8, "normal", function(){doNothing()});
-		PD.setBinding(8, "shift", function(){doNothing()});
-		PD.setBinding(9, "normal", function(){doNothing()});
-		PD.setBinding(13, "normal", function(){doNothing()});
-		PD.setBinding(13, "shift", function(){doNothing()});
-		PD.setBinding(32, "normal", function(){doNothing()});
-		PD.setBinding(32, "shift", function(){doNothing()});
-		PD.setBinding(33, "normal", function(){doNothing()});
-		PD.setBinding(34, "normal", function(){doNothing()});
-		PD.setBinding(35, "normal", function(){doNothing()});
-		PD.setBinding(36, "normal", function(){doNothing()});
-		PD.setBinding(37, "normal", function(){doNothing()});
-		PD.setBinding(38, "normal", function(){doNothing()});
-		PD.setBinding(39, "normal", function(){doNothing()});
-		PD.setBinding(40, "normal", function(){doNothing()});
-		PD.setBinding(48, "normal", function(){doNothing()});
-		PD.setBinding(48, "shift", function(){doNothing()});
-		PD.setBinding(49, "normal", function(){doNothing()});
-		PD.setBinding(49, "shift", function(){doNothing()});
-		PD.setBinding(50, "normal", function(){doNothing()});
-		PD.setBinding(50, "shift", function(){doNothing()});
-		PD.setBinding(51, "normal", function(){doNothing()});
-		PD.setBinding(51, "shift", function(){doNothing()});
-		PD.setBinding(52, "normal", function(){doNothing()});
-		PD.setBinding(52, "shift", function(){doNothing()});
-		PD.setBinding(53, "normal", function(){doNothing()});
-		PD.setBinding(53, "shift", function(){doNothing()});
-		PD.setBinding(54, "normal", function(){doNothing()});
-		PD.setBinding(54, "shift", function(){doNothing()});
-		PD.setBinding(55, "normal", function(){doNothing()});
-		PD.setBinding(55, "shift", function(){doNothing()});
-		PD.setBinding(56, "normal", function(){doNothing()});
-		PD.setBinding(56, "shift", function(){doNothing()});
-		PD.setBinding(57, "normal", function(){doNothing()});
-		PD.setBinding(57, "shift", function(){doNothing()});
-		PD.setBinding(65, "normal", function(){doNothing()});
-		PD.setBinding(65, "shift", function(){doNothing()});
-		PD.setBinding(66, "normal", function(){doNothing()});
-		PD.setBinding(66, "shift", function(){doNothing()});
-		PD.setBinding(67, "normal", function(){doNothing()});
-		PD.setBinding(67, "shift", function(){doNothing()});
-		PD.setBinding(68, "normal", function(){doNothing()});
-		PD.setBinding(68, "shift", function(){doNothing()});
-		PD.setBinding(69, "normal", function(){doNothing()});
-		PD.setBinding(69, "shift", function(){doNothing()});
-		PD.setBinding(70, "normal", function(){doNothing()});
-		PD.setBinding(70, "shift", function(){doNothing()});
-		PD.setBinding(71, "normal", function(){doNothing()});
-		PD.setBinding(71, "shift", function(){doNothing()});
-		PD.setBinding(72, "normal", function(){doNothing()});
-		PD.setBinding(72, "shift", function(){doNothing()});
-		PD.setBinding(73, "normal", function(){doNothing()});
-		PD.setBinding(73, "shift", function(){doNothing()});
-		PD.setBinding(74, "normal", function(){doNothing()});
-		PD.setBinding(74, "shift", function(){doNothing()});
-		PD.setBinding(75, "normal", function(){doNothing()});
-		PD.setBinding(75, "shift", function(){doNothing()});
-		PD.setBinding(76, "normal", function(){doNothing()});
-		PD.setBinding(76, "shift", function(){doNothing()});
-		PD.setBinding(77, "normal", function(){doNothing()});
-		PD.setBinding(77, "shift", function(){doNothing()});
-		PD.setBinding(78, "normal", function(){doNothing()});
-		PD.setBinding(78, "shift", function(){doNothing()});
-		PD.setBinding(79, "normal", function(){doNothing()});
-		PD.setBinding(79, "shift", function(){doNothing()});
-		PD.setBinding(80, "normal", function(){doNothing()});
-		PD.setBinding(80, "shift", function(){doNothing()});
-		PD.setBinding(81, "normal", function(){doNothing()});
-		PD.setBinding(81, "shift", function(){doNothing()});
-		PD.setBinding(82, "normal", function(){doNothing()});
-		PD.setBinding(82, "shift", function(){doNothing()});
-		PD.setBinding(83, "normal", function(){doNothing()});
-		PD.setBinding(83, "shift", function(){doNothing()});
-		PD.setBinding(84, "normal", function(){doNothing()});
-		PD.setBinding(84, "shift", function(){doNothing()});
-		PD.setBinding(85, "normal", function(){doNothing()});
-		PD.setBinding(85, "shift", function(){doNothing()});
-		PD.setBinding(86, "normal", function(){doNothing()});
-		PD.setBinding(86, "shift", function(){doNothing()});
-		PD.setBinding(87, "normal", function(){doNothing()});
-		PD.setBinding(87, "shift", function(){doNothing()});
-		PD.setBinding(88, "normal", function(){doNothing()});
-		PD.setBinding(88, "shift", function(){doNothing()});
-		PD.setBinding(89, "normal", function(){doNothing()});
-		PD.setBinding(89, "shift", function(){doNothing()});
-		PD.setBinding(90, "normal", function(){doNothing()});
-		PD.setBinding(90, "shift", function(){doNothing()});
-		PD.setBinding(186, "normal", function(){doNothing()});
-		PD.setBinding(186, "shift", function(){doNothing()});
-		PD.setBinding(187, "normal", function(){doNothing()});
-		PD.setBinding(187, "shift", function(){doNothing()});
-		PD.setBinding(188, "normal", function(){doNothing()});
-		PD.setBinding(188, "shift", function(){doNothing()});
-		PD.setBinding(189, "normal", function(){doNothing()});
-		PD.setBinding(189, "shift", function(){doNothing()});
-		PD.setBinding(190, "normal", function(){doNothing()});
-		PD.setBinding(190, "shift", function(){doNothing()});
-		PD.setBinding(191, "normal", function(){doNothing()});
-		PD.setBinding(191, "shift", function(){doNothing()});
-		PD.setBinding(192, "normal", function(){doNothing()});
-		PD.setBinding(192, "shift", function(){doNothing()});
-		PD.setBinding(219, "normal", function(){doNothing()});
-		PD.setBinding(219, "shift", function(){doNothing()});
-		PD.setBinding(220, "normal", function(){doNothing()});
-		PD.setBinding(220, "shift", function(){doNothing()});
-		PD.setBinding(221, "normal", function(){doNothing()});
-		PD.setBinding(221, "shift", function(){doNothing()});
-		PD.setBinding(222, "normal", function(){doNothing()});
-		PD.setBinding(222, "shift", function(){doNothing()});
-
+		return [
+			[8, "normal", function(){doNothing()}],
+			[8, "shift", function(){doNothing()}],
+			[9, "normal", function(){doNothing()}],
+			[13, "normal", function(){doNothing()}],
+			[13, "shift", function(){doNothing()}],
+			[32, "normal", function(){doNothing()}],
+			[32, "shift", function(){doNothing()}],
+			[33, "normal", function(){doNothing()}],
+			[34, "normal", function(){doNothing()}],
+			[35, "normal", function(){doNothing()}],
+			[36, "normal", function(){doNothing()}],
+			[37, "normal", function(){doNothing()}],
+			[38, "normal", function(){doNothing()}],
+			[39, "normal", function(){doNothing()}],
+			[40, "normal", function(){doNothing()}],
+			[48, "normal", function(){doNothing()}],
+			[48, "shift", function(){doNothing()}],
+			[49, "normal", function(){doNothing()}],
+			[49, "shift", function(){doNothing()}],
+			[50, "normal", function(){doNothing()}],
+			[50, "shift", function(){doNothing()}],
+			[51, "normal", function(){doNothing()}],
+			[51, "shift", function(){doNothing()}],
+			[52, "normal", function(){doNothing()}],
+			[52, "shift", function(){doNothing()}],
+			[53, "normal", function(){doNothing()}],
+			[53, "shift", function(){doNothing()}],
+			[54, "normal", function(){doNothing()}],
+			[54, "shift", function(){doNothing()}],
+			[55, "normal", function(){doNothing()}],
+			[55, "shift", function(){doNothing()}],
+			[56, "normal", function(){doNothing()}],
+			[56, "shift", function(){doNothing()}],
+			[57, "normal", function(){doNothing()}],
+			[57, "shift", function(){doNothing()}],
+			[65, "normal", function(){doNothing()}],
+			[65, "shift", function(){doNothing()}],
+			[66, "normal", function(){doNothing()}],
+			[66, "shift", function(){doNothing()}],
+			[67, "normal", function(){doNothing()}],
+			[67, "shift", function(){doNothing()}],
+			[68, "normal", function(){doNothing()}],
+			[68, "shift", function(){doNothing()}],
+			[69, "normal", function(){doNothing()}],
+			[69, "shift", function(){doNothing()}],
+			[70, "normal", function(){doNothing()}],
+			[70, "shift", function(){doNothing()}],
+			[71, "normal", function(){doNothing()}],
+			[71, "shift", function(){doNothing()}],
+			[72, "normal", function(){doNothing()}],
+			[72, "shift", function(){doNothing()}],
+			[73, "normal", function(){doNothing()}],
+			[73, "shift", function(){doNothing()}],
+			[74, "normal", function(){doNothing()}],
+			[74, "shift", function(){doNothing()}],
+			[75, "normal", function(){doNothing()}],
+			[75, "shift", function(){doNothing()}],
+			[76, "normal", function(){doNothing()}],
+			[76, "shift", function(){doNothing()}],
+			[77, "normal", function(){doNothing()}],
+			[77, "shift", function(){doNothing()}],
+			[78, "normal", function(){doNothing()}],
+			[78, "shift", function(){doNothing()}],
+			[79, "normal", function(){doNothing()}],
+			[79, "shift", function(){doNothing()}],
+			[80, "normal", function(){doNothing()}],
+			[80, "shift", function(){doNothing()}],
+			[81, "normal", function(){doNothing()}],
+			[81, "shift", function(){doNothing()}],
+			[82, "normal", function(){doNothing()}],
+			[82, "shift", function(){doNothing()}],
+			[83, "normal", function(){doNothing()}],
+			[83, "shift", function(){doNothing()}],
+			[84, "normal", function(){doNothing()}],
+			[84, "shift", function(){doNothing()}],
+			[85, "normal", function(){doNothing()}],
+			[85, "shift", function(){doNothing()}],
+			[86, "normal", function(){doNothing()}],
+			[86, "shift", function(){doNothing()}],
+			[87, "normal", function(){doNothing()}],
+			[87, "shift", function(){doNothing()}],
+			[88, "normal", function(){doNothing()}],
+			[88, "shift", function(){doNothing()}],
+			[89, "normal", function(){doNothing()}],
+			[89, "shift", function(){doNothing()}],
+			[90, "normal", function(){doNothing()}],
+			[90, "shift", function(){doNothing()}],
+			[186, "normal", function(){doNothing()}],
+			[186, "shift", function(){doNothing()}],
+			[187, "normal", function(){doNothing()}],
+			[187, "shift", function(){doNothing()}],
+			[188, "normal", function(){doNothing()}],
+			[188, "shift", function(){doNothing()}],
+			[189, "normal", function(){doNothing()}],
+			[189, "shift", function(){doNothing()}],
+			[190, "normal", function(){doNothing()}],
+			[190, "shift", function(){doNothing()}],
+			[191, "normal", function(){doNothing()}],
+			[191, "shift", function(){doNothing()}],
+			[192, "normal", function(){doNothing()}],
+			[192, "shift", function(){doNothing()}],
+			[219, "normal", function(){doNothing()}],
+			[219, "shift", function(){doNothing()}],
+			[220, "normal", function(){doNothing()}],
+			[220, "shift", function(){doNothing()}],
+			[221, "normal", function(){doNothing()}],
+			[221, "shift", function(){doNothing()}],
+			[222, "normal", function(){doNothing()}],
+			[222, "shift", function(){doNothing()}]
+		];
 	}
 
 	window.onkeydown = checkKey;

@@ -1,12 +1,34 @@
-function doNothing() {};
-
-// could use eval for the command line program? Kinda takes the fun out of it because I was going to implement my own token parsing and make my own language. eval would be fun though.
+// could use eval for the command line program
 
 // I have to draw a circle with Math stuff :^)
 
 // need changing() wrapper that adds this.changed to functions
 
-// I don't really understand what selected is. It's mainly just so that escape works. But it's really difficult to know what should be selectable and when I don't have many scenarios yet. It could just be a duck test thing.
+// I don't really understand what selected is. It's mainly just so that escape works. But it's really difficult to know what should be selectable when I don't have many scenarios yet.
+
+function doNothing() {};
+
+// I am in shock and denial about how well this works.
+// You still can't have private static methods that access instance properties but it doesn't matter because you can have private instance methods that access instance properties and static properties. Not sure how it effects performance but I don't think it's harmful. It's probably less harmful that using prototypes.
+function Mixin(){
+	// build depency list
+	var mixingPot = [];
+	// should recursively get dependencies
+	for (var i=arguments.length-1; i>=0; i--) {
+		mixingPot = arguments[i].dependencies.concat(mixingPot);
+		mixingPot.unshift(arguments[i]);
+	}
+	// should remove duplicates.
+	// should save factory names in a list so that I don't have to do the duck test.
+    var instance = {};
+	for (var i=mixingPot.length-1; i>=0; i--) {
+		// get product from factory, supplying a reference to the instance.
+		var product = mixingPot[i](instance);
+		for(var key in product)
+			instance[key] = product[key];
+	}
+    return instance;
+}
 
 String.prototype.toSpan= function(colour, background) {
 	var span = '<span style="color:'+colour+
@@ -18,7 +40,7 @@ String.prototype.toTag= function(letter) {
 	return "<" + letter + ">" + this.valueOf() + "</" + letter + ">";
 };
 
-// PD is namespace
+// namespace
 var PD = {
 	selected: {}
 };
@@ -116,7 +138,14 @@ var terminal= {
 	subRegion: [],
 	activeBuffer: 0,
 	
-	hasChanged: true
+	hasChanged: true,
+	
+	bindings: [],
+	setBindings: function() {
+		for (var i=0; i<terminal.bindings.length; i++) {
+			PD.setBinding(terminal.bindings[i]);
+		}
+	}
 };
 
 (function() {
@@ -153,7 +182,6 @@ var terminal= {
 			constructDivs();
 			PD.initKeys();
 			crappyTest();
-			PD.startTimer();
 			setInterval(terminal.update, 32); // fixed 30fps
 		};
 	})();
@@ -195,7 +223,7 @@ var terminal= {
 		// implement paul blart here
 		function drawRegion(offset, toDraw, parentChanged) {
 			var thisChanged=false;
-			if (toDraw.hasChanged===true||parentChanged===true) {
+			if (toDraw.hasChanged==true||parentChanged==true) {
 				toDraw.update();
 				if (!toDraw.visible) { return; }
 				offset+=(toDraw.y*terminal.width)+toDraw.x;
@@ -219,202 +247,256 @@ var terminal= {
 	})();
 })();
 
-// I want to try composing regions out of modules. I like the constructors. I'm sure I'm not supposed to be using "that" everywhere but it seems like a really good solution.
-function Region(name, width, height, x, y) {
-	this.name = name || (function() {
-							console.log("unnamed region");
-							return "ERROR"; }
-						)();
-	this.width = width || 0;
-	this.height = height || 0;
-	this.x = x || 0;
-	this.y = y || 0;
-	this.initChar='\u00a0'; // if '' then transparent
-	this.visible=true;
-	this.colour='#1D5FA1';
-	this.background='white';
-	this.bindings = function(){doNothing()};
-	this.setBindings = function(){
-		this.bindings(this);
-	};
-	this.selectFunction = function() {doNothing()};
-	this.select = function() {
-		this.selectFunction();
-		PD.setSelected(this);
-	}; 
-	this.hydrate = function() {
-		var length = this.width*this.height;
-		for (var i=0; i<length; i++) {
-			this.buffer[i] = this.initChar;
+function RegionFactory(instance) {
+	var that = instance;
+	return Region = {
+		name : "",
+		width : 0,
+		height : 0,
+		x : 0,
+		y : 0,
+		initChar:'\u00a0', // if '' then transparent
+		visible:true,
+		colour:'#1D5FA1',
+		background:'white',
+		buffer:[],
+		subRegion:[],
+		bindings : [],
+		setBindings: function() {
+			for (var i=0; i<that.bindings.length; i++) {
+				PD.setBinding(that.bindings[i]);
+			}
+		},
+		selectFunction : function() {doNothing()},
+		select : function() {
+			that.selectFunction();
+			PD.setSelected(that);
+		},
+		hydrate : function() {
+			var length = that.width*that.height;
+			for (var i=0; i<length; i++) {
+				that.buffer[i] = that.initChar;
+			}
+		},
+		hasChanged : true,
+		changed : function() {
+			terminal.hasChanged=true;
+			that.hasChanged=true;
+		},
+		update:function() {doNothing()},
+		getVector : function(i) {
+			return {x: i%that.width, y: Math.floor(i/that.width)};
+		},
+		getPointer : function (x, y) {
+			return (y*that.width)+x;
+		},
+		set: function() {
+			for (var key in arguments[0]) {
+				that[key] = arguments[0][key];
+			}
 		}
 	};
-	this.hasChanged=true;
-	this.changed = function() {
-		terminal.hasChanged=true;
-		this.hasChanged=true;
-	}
-	this.update=function() {doNothing()};
-	this.getVector = function(i) {
-		return {x: i%this.width, y: Math.floor(i/this.width)};
-	}
-	this.getPointer = function (x, y) {
-		return (y*this.width)+x;
-	}
 };
 
-function ScreenRegion(name) {
-	this.name=name;
-	this.initChar='\u2593';
-	this.buffer=[];
-	this.subRegion=[];
+RegionFactory.dependencies = [];
+
+function ScreenRegionFactory(instance) {
+	var that = instance;
+	return ScreenRegion = {
+		width: terminal.width,
+		height: terminal.height,
+		initChar:'\u2593'
+	};
 };
 
-ScreenRegion.prototype=new Region("ScreenRegion", terminal.width, terminal.height, 0, 0);
+ScreenRegionFactory.dependencies = [RegionFactory];
 
 // I wanted this to be higher up in terminal or something but closures.
-var textBuffer=new ScreenRegion("TextBuffer");
-textBuffer.initChar='\u2588';
+var textBuffer = Mixin(ScreenRegionFactory);
+textBuffer.set({ name: "TextBuffer", initChar: '\u2588' });
 textBuffer.hydrate();
 
 // assumes that all windows are created fullscreen.
-function WindowRegion(name) {
-	this.name=name;
-	this.buffer=[];
-	this.subRegion=[];
+function WindowRegionFactory(instance) {
+	var that = instance;
+	return WindowRegion = {
+		width: terminal.width,
+		height: terminal.height-1,
+		y: 1
+	};
 };
 
-WindowRegion.prototype=new Region("WindowRegion", terminal.width, terminal.height-1, 0, 1);
+WindowRegionFactory.dependencies = [RegionFactory];
 
-function VanillaRegion(name, width, height, x, y) {
-	this.name=name;
-	this.width=width||0;
-	this.height=height||0;
-	this.x=x||0;
-	this.y=y||0;
-	this.buffer=[];
-	this.subRegion=[];
-};
+// VanillaRegion is not a thing.
 
-VanillaRegion.prototype=new Region("VanillaRegion");
-
-function BoxRegion(name, width, height, x, y) {
-	this.name=name;
-	this.width=width;
-	this.height=height;
-	this.x=x||0;
-	this.y=y||0;
-	this.buffer=[];
-	this.subRegion=[];
-	// Beautiful.
-	this.decorate = (function (that) {
-		var pointer=0;
-		function pointerAt(x, y) {
-			pointer=that.getPointer(x, y);
-		}
-		function printAt(x, y, ch) {
-			pointerAt(x, y);
-			that.buffer[pointer]=ch;
-		}
-		function movePointer(x, y) {
-			pointer+=that.getPointer(x, y);
-		}
-		function horizontalPrint(ch) {
-			that.buffer[pointer]=ch;
-			movePointer(1, 0); // autism
-		}
-		function verticalPrint(ch) {
-			that.buffer[pointer]=ch;
-			movePointer(0, 1);
-		}
-		function horizontalLine(x, y, ch, length) {
-			var thisLength=length||that.width;
-			pointerAt(x, y);
-			for (var i=0; i<thisLength; i++) {
-				horizontalPrint(ch);
-			}
-		}
-		function verticalLine(x, y, ch, length) {
-			var thisLength=length||that.height;
-			pointerAt(x, y);
-			for (var i=0; i<thisLength; i++) {
-				verticalPrint(ch);
-			}
-		}
-		return function() {
-			horizontalLine(0, 0, '\u2500');
-			verticalLine(0, 0, '\u2502');
-			horizontalLine(0, that.height-1, '\u2500');
-			verticalLine(that.width-1, 0, '\u2502');
-			printAt(0, 0, '\u250C');
-			printAt(that.width-1, 0, '\u2510');
-			printAt(0, that.height-1, '\u2514');
-			printAt(that.width-1, that.height-1, '\u2518');
-		}
-	})(this);
+function BoxRegionFactory(instance) {
+	var that = instance;
+	return BoxRegion = {
+		decorate : (function () {
+			var pointer=0;
+			function pointerAt(x, y) {
+				pointer=that.getPointer(x, y);
+			};
+			function printAt(x, y, ch) {
+				pointerAt(x, y);
+				that.buffer[pointer]=ch;
+			};
+			function movePointer(x, y) {
+				pointer+=that.getPointer(x, y);
+			};
+			function horizontalPrint(ch) {
+				that.buffer[pointer]=ch;
+				movePointer(1, 0); // autism
+			};
+			function verticalPrint(ch) {
+				that.buffer[pointer]=ch;
+				movePointer(0, 1);
+			};
+			function horizontalLine(x, y, ch, length) {
+				var thisLength=length||that.width;
+				pointerAt(x, y);
+				for (var i=0; i<thisLength; i++) {
+					horizontalPrint(ch);
+				}
+			};
+			function verticalLine(x, y, ch, length) {
+				var thisLength=length||that.height;
+				pointerAt(x, y);
+				for (var i=0; i<thisLength; i++) {
+					verticalPrint(ch);
+				}
+			};
+			return function() {
+				horizontalLine(0, 0, '\u2500');
+				verticalLine(0, 0, '\u2502');
+				horizontalLine(0, that.height-1, '\u2500');
+				verticalLine(that.width-1, 0, '\u2502');
+				printAt(0, 0, '\u250C');
+				printAt(that.width-1, 0, '\u2510');
+				printAt(0, that.height-1, '\u2514');
+				printAt(that.width-1, that.height-1, '\u2518');
+			};
+		})()
+	};
 }
 
-BoxRegion.prototype=new Region("BoxRegion");
+BoxRegionFactory.dependencies = [RegionFactory];
 
-// This stuff wot I just closured ere is like, for EncodedTextRegion / EditableTextRegion stuff
-// I'm thinking I could return these things as a property of EncodingModule, so that I can compose regions out of it.
-(function() {
-	PD.tabSize= 4;
-	// PD.newLineMode ( \r\n or \n )
-
-	PD.colourMode = '#1D5FA1';
-	PD.background = "white";
-	PD.underlined = false;
-	PD.bold = false;
-	PD.italics = false;
-
-	PD.toggleUnderlined = function() {
-		PD.underlined
-		? PD.underlined=false
-		: PD.underlined=true;
-	};
-
-	PD.toggleBold = function() {
-		PD.bold
-		? PD.bold=false
-		: PD.bold=true;
-	};
-
-	PD.toggleItalics = function() {
-		PD.italics
-		? PD.italics=false
-		: PD.italics=true;
-	};
-
-	PD.toggleCapsLock = (function() {
-		var capsLock=false;
-		return function() {
-			capsLock
-			? (function() {
-				capsLock = false;
-				PD.textEditorAtoZ(PD.selected);
+var EncodedTextRegionFactory = (function() {
+	var tabSize= 4;
+	// newLineMode ( \r\n or \n )
+	
+	return Factory = function(instance) {
+		var that = instance;
+		var wrap= function(symbol) {
+			var ch=symbol[0];
+			var colour=symbol[1];
+			var background=symbol[2];
+			var underlined=symbol[3];
+			var bold=symbol[4];
+			var italics=symbol[5];
+			
+			if (underlined) {ch=ch.toTag("u")};
+			if (bold) {ch=ch.toTag("b")};
+			if (italics) {ch=ch.toTag("i")};
+			return ch.toSpan(colour, background);
+		};
+		return EncodedTextRegion = {
+			encodedBuffer: [],
+			encodedPointer: 0,
+			pointer: 0,
+			
+			update: (function() {
+				var helperPointer=0;
+				var tab = function() {
+					var x = that.getVector(helperPointer).x;
+					for (var i=x%tabSize; i<tabSize; i++) {
+						printSpace();
+					}
+				};
+				var newLine = function() {
+					for (var i=that.getVector(helperPointer).x; i<that.width; i++) {
+						printSpace();
+					}
+				};
+				// it looks weird that spaces arn't underlined. Fuck it, it's by design.
+				var printSpace= function() {
+					helperPrint(['\u00a0', "black", "white", false, false, false]);
+				};
+				var helperPrint = function(symbol) {
+					that.buffer[helperPointer]=wrap(symbol);
+					helperPointer++;
+				};
+				// This could be a map right?
+				var decode = function(symbol) {
+					switch(symbol[0]) {
+						case ' ':
+							printSpace();
+							break;
+						case '\r\n':
+							newLine();
+							break;
+						case '\t':
+							tab();
+							break;
+						default:
+							helperPrint(symbol);
+					}
+				};
+				return function() {
+					that.hydrate();
+					helperPointer=0;
+					that.pointer=0;
+					for (var i=0; i<that.encodedBuffer.length; i++) {
+						decode(that.encodedBuffer[i]);
+						if (i+1===that.encodedPointer) {
+							that.pointer=helperPointer;
+						}
+					}
+				};
 			})()
-			: (function() {
-				capsLock = true;
-				PD.capsLockBindings(PD.selected);
-			})();
-		}
-	})();
+		};
+	};
 })();
 
-// This stuff should be in EditableTextRegion too.
-(function() {
+EncodedTextRegionFactory.dependencies = [RegionFactory];
+
+var EditableTextRegionFactory = (function() {
+	var insertMode=true;
+	var capsLock=false;
+	var colourMode= '#1D5FA1';
+	var background= "white";
+	var underlined= false;
+	var bold= false;
+	var italics= false;
+	var toggleUnderlined = function() {
+		underlined
+		? underlined=false
+		: underlined=true;
+	};
+	var toggleBold = function() {
+		bold
+		? bold=false
+		: bold=true;
+	};
+	var toggleItalics = function() {
+		italics
+		? italics=false
+		: italics=true;
+	};
 	var getCursor= function() {
-		if (PD.selected instanceof EditableTextRegion) {
+		//haxx
+		if (PD.selected.hasOwnProperty("save")) {
 			return PD.selected.subRegion[0];
 		}
 		else {
 			return 0;
 		}
 	};
-	PD.insertMode=true;
 	var toggleInsertMode = function () {
 		var cursor=getCursor();
-		PD.insertMode
+		insertMode
 		? (function () {
 			cursor.buffer[0]='_';
 			PD.insertMode=false; })() // PD.startTimer()?
@@ -422,8 +504,7 @@ BoxRegion.prototype=new Region("BoxRegion");
 			cursor.buffer[0]='\u2588';
 			PD.insertMode=true; })();
 	};
-	
-	PD.startTimer = (function() {
+	var startTimer = (function() {
 		var timer;
 		function toggleCursor() {
 			var cursor=getCursor();
@@ -443,124 +524,74 @@ BoxRegion.prototype=new Region("BoxRegion");
 			timer=setInterval(toggleCursor, 350);
 		};
 	})();
-})();
-
-var EditableTextRegion = {};
-var TextRegion = {};
-
-(function() {
-	var wrap= function(symbol) {
-		var ch=symbol[0];
-		var colour=symbol[1];
-		var background=symbol[2];
-		var underlined=symbol[3];
-		var bold=symbol[4];
-		var italics=symbol[5];
-		
-		if (underlined) {ch=ch.toTag("u")};
-		if (bold) {ch=ch.toTag("b")};
-		if (italics) {ch=ch.toTag("i")};
-		return ch.toSpan(colour, background);
-	};
-	var updateFunction = function(that) {
-			var helperPointer=0;
-			var tab = function() {
-				var x = that.getVector(helperPointer).x;
-				for (var i=x%PD.tabSize; i<PD.tabSize; i++) {
-					printSpace();
-				}
-			};
-			var newLine = function() {
-				for (var i=that.getVector(helperPointer).x; i<that.width; i++) {
-					printSpace();
-				}
-			};
-			// it looks weird that spaces arn't underlined. Fuck it, it's by design.
-			var printSpace= function() {
-				helperPrint(['\u00a0', "black", "white", false, false, false]);
-			};
-			var helperPrint = function(symbol) {
-				that.buffer[helperPointer]=wrap(symbol);
-				helperPointer++;
-			};
-			// This could be a map right?
-			var decode = function(symbol) {
-				switch(symbol[0]) {
-					case ' ':
-						printSpace();
-						break;
-					case '\r\n':
-						newLine();
-						break;
-					case '\t':
-						tab();
-						break;
-					default:
-						helperPrint(symbol);
-				}
-			};
-			return function() {
-				this.hydrate();
-				helperPointer=0;
-				this.pointer=0;
-				for (var i=0; i<this.encodedBuffer.length; i++) {
-					decode(this.encodedBuffer[i]);
-					if (i+1===this.encodedPointer) {
-						this.pointer=helperPointer;
-					}
-				}
-			};
-		};
-	TextRegion = function(name, width, height, x, y) {
-		this.name=name;
-		this.width=width;
-		this.height=height;
-		this.x=x;
-		this.y=y;
-		this.buffer=[];
-		this.encodedBuffer=[];
-		this.pointer=0;
-		this.subRegion=[];
-		this.update=updateFunction(this);
-		// fuck style for now. But I could work out a way of encoding it like \#FFFFFF or whatever.
-		this.printText = function(text) {
-			for (var i=0; i<text.length; i++) {
-				// for fucks sake microsoft
-				if (text[i]!=="\r") { this.encodedBuffer.push([text[i], PD.colourMode, PD.background, false, false, false]); }
-				else {
-					this.encodedBuffer.push(["\r\n", PD.colourMode, PD.background, false, false, false]);
-					i++;
-				}
-			}		
-		}
-	}
 	function encode(symbol) {
-		return [symbol, PD.colourMode, PD.background, PD.underlined, PD.bold, PD.italics];
-	}
-	EditableTextRegion = function(name, width, height, x, y) {
-		this.name=name;
-		this.width=width;
-		this.height=height;
-		this.x=x;
-		this.y=y;
-		this.buffer=[];
-		this.encodedBuffer=[];
-		this.encodedPointer=0;
-		this.pointer=0;
-		this.subRegion=[];
-		this.bindings=function (that) {
-			// just to be neat
-			PD.otherTextEditorBindings(that);
-			
-			PD.textEditorAtoZ(that);
-			
-			PD.setBinding(83, "ctrl", function(){that.save()});
+		return [symbol, colourMode, background, underlined, bold, italics];
+	};
+	return Factory = function(instance) {
+		var that = instance;
+		var EditableTextRegion = {
+			bindings: (function() {
+				// Megashite
+				var array = PD.otherTextEditorBindings(that).concat(PD.textEditorAtoZ(that));
+				array.push([83, "ctrl", function(){that.save()}]);
+				return array;
+			})(),
+			// might need to use the BoxRegion matrix methods to help going up / down in y.
+			cursorRight: function () {
+				startTimer();
+				that.encodedPointer++;
+				that.changed();
+			},
+			cursorLeft: function () {
+				startTimer();
+				if (that.encodedPointer>0) {
+					that.encodedPointer--;
+				}
+				that.changed();
+			},
+			print: function (symbol) {
+				insertMode
+				? that.encodedBuffer.splice(that.encodedPointer, 0, encode(symbol))
+				: that.encodedBuffer[that.encodedPointer]=encode(symbol);
+				that.cursorRight();
+			},
+			backspace: function () {
+				that.cursorLeft();
+				if (that.encodedBuffer.length&&that.encodedPointer>=0) {
+					that.encodedBuffer.splice(that.encodedPointer, 1);
+					that.changed();
+				}
+			},
+			deleteKey: function() {
+				if (that.encodedBuffer.length&&that.encodedPointer!==that.encodedBuffer.length) {
+					that.encodedBuffer.splice(that.encodedPointer, 1);
+					that.changed();
+				}
+			},
+			save: function() {
+				var data="";
+				for (var i=0; i<that.encodedBuffer.length; i++) {
+					data+=that.encodedBuffer[i][0];
+				}
+				window.open('data:text/csv;charset=utf-8,' + encodeURIComponent(data));
+			},
+			toggleCapsLock: (function() {
+				return function() {
+					capsLock
+					? (function() {
+						capsLock = false;
+						PD.setBindings(PD.textEditorAtoZ(PD.selected));
+					})()
+					: (function() {
+						capsLock = true;
+						PD.setBindings(PD.capsLockBindings(PD.selected));
+					})();
+				}
+			})()
 		};
-		// might need to use the BoxRegion matrix methods to help going up / down in y.
-		this.update=updateFunction(this);
-		PD.pushRegion( (function (that) {
-			var cursor=new VanillaRegion(that.name + "Cursor", 1, 1);
-			cursor.visible=false;
+		PD.pushRegion( (function () {
+			var cursor = Mixin(RegionFactory);
+			cursor.set({name: "Cursor", width: 1, height: 1, visible: false});
 			cursor.buffer[0]='\u2588';
 			cursor.update=function () {
 				var vector = that.getVector(that.pointer);
@@ -568,90 +599,68 @@ var TextRegion = {};
 				cursor.y=vector.y;
 			};
 			return cursor;
-		})(this), this);
-		this.cursorRight=function () {
-			PD.startTimer();
-			this.encodedPointer++;
-			this.changed();
-		}
-		this.cursorLeft=function () {
-			PD.startTimer();
-			if (this.encodedPointer>0) {
-				this.encodedPointer--;
-			}
-			this.changed();
-		}
-		this.print=function (symbol) {
-			PD.insertMode
-			? this.encodedBuffer.splice(this.encodedPointer, 0, encode(symbol))
-			: this.encodedBuffer[this.encodedPointer]=encode(symbol);
-			this.cursorRight();
-		}
-		this.backspace=function () {
-			this.cursorLeft();
-			if (this.encodedBuffer.length&&this.encodedPointer>=0) {
-				this.encodedBuffer.splice(this.encodedPointer, 1);
-				this.changed();
-			}
-		}
-		this.deleteKey=function() {
-			if (this.encodedBuffer.length&&this.encodedPointer!==this.encodedBuffer.length) {
-				this.encodedBuffer.splice(this.encodedPointer, 1);
-				this.changed();
-			}
-		};
-		this.save= function() {
-			var data="";
-			for (var i=0; i<this.encodedBuffer.length; i++) {
-				data+=this.encodedBuffer[i][0];
-			}
-			window.open('data:text/csv;charset=utf-8,' + encodeURIComponent(data));
-		};
+		})(), that);
+		startTimer();
+		return EditableTextRegion;
 	};
 })();
 
-EditableTextRegion.prototype = new Region("EditableTextRegion");
-TextRegion.prototype = new Region("TextRegion");
+EditableTextRegionFactory.dependencies = [EncodedTextRegionFactory, RegionFactory];
+
+function TextRegionFactory(instance) {
+	var that = instance;
+	return TextRegion = {
+		// fuck style for now. But I could work out a way of encoding it like \#FFFFFF or whatever.
+		printText: function(text) {
+			for (var i=0; i<text.length; i++) {
+				// for fucks sake microsoft
+				if (text[i]!=="\r") { that.encodedBuffer.push([text[i], that.colour, that.background, false, false, false]); }
+				else {
+					that.encodedBuffer.push(["\r\n", that.colour, that.background, false, false, false]);
+					i++;
+				}
+			}		
+		}
+	};
+};
+
+TextRegionFactory.dependencies = [EncodedTextRegionFactory, RegionFactory];
 
 // Every button has a shortcut. I think the index should be chosen programmatically, and it might be easy. altBuffer should only be seen when the bindings are active.
 // Still doesn't support funky greek letters.
 // ie. all text should be encoded text duuuhhhh.
-function ButtonRegion(name, binding, x, y, index) {
-	this.name=name+"Button";
-	this.bindings=binding;
-	this.width=name.length;
-	this.height=1;
-	this.x=x||0;
-	this.y=y||0;
-	this.buffer= (function(that) {
-		var newBuffer=[];
-		for (var i=0; i<name.length; i++) {
-			newBuffer[i]=name[i].toSpan(that.colour, that.background);
-		}
-		return newBuffer;
-	})(this);
-	this.bufferCache=this.buffer;
-	this.altBuffer = (function(that) {
-		// clone
-		var newBuffer=that.buffer.slice();
-		for (var i=0; i<name.length; i++) {
-			if (i==(index||0)) {
-				newBuffer[i]=name[i].toSpan(that.colour, that.background).toTag('u');
-				break;
+function ButtonRegionFactory(instance) {
+	var that = instance;
+	return ButtonRegion = {
+		index: 0,
+		height: 1,
+		update : function() {
+			PD.altMode
+			? that.buffer=that.altBuffer
+			: that.buffer=that.bufferCache;
+			that.changed();
+		},
+		hydrate: function() {
+			that.width = that.name.length;
+			var newBuffer=[];
+			for (var i=0; i<that.name.length; i++) {
+				newBuffer[i]=that.name[i].toSpan(that.colour, that.background);
 			}
+			that.buffer= newBuffer.slice();
+			that.bufferCache = newBuffer.slice();
+			
+			for (var i=0; i<that.name.length; i++) {
+				if (i==that.index) {
+					newBuffer[i]=that.name[i].toSpan(that.colour, that.background).toTag('u');
+					break;
+				}
+			}
+			that.altBuffer = newBuffer.slice();
 		}
-		return newBuffer;
-	})(this);
-	this.subRegion=[];
-	this.update = function() {
-		PD.altMode
-		? this.buffer=this.altBuffer
-		: this.buffer=this.bufferCache;
-		this.changed();
 	};
-}
+};
 
-ButtonRegion.prototype=new Region("ButtonRegion");
+ButtonRegionFactory.dependencies = [RegionFactory];
 
 // Scripts //
 
@@ -660,97 +669,104 @@ function crappyTest() {
 	initLogin();
 	initDesktop();
 	testBindings();
-}
+};
 	
 // I feel like a run(program) function is coming. it would create the program, select it.
 function runAlpha() {
-	var alpha = new WindowRegion("Alpha");
-	alpha.initChar='\u2591';
+	var alpha = Mixin(WindowRegionFactory);
+	alpha.set({ name: "Alpha", initChar: '\u2591' });
 	PD.pushRegion( (function() {
-		return new EditableTextRegion("AlphaText", 24, 12, 2, 1);
+		var alphaText = Mixin(EditableTextRegionFactory);
+		alphaText.set({ name: "AlphaText", width: 24, height: 12, x: 2, y: 1 });
+		return alphaText;
 	})(), alpha);
 	alpha.hydrate();
 	PD.pushRegion(alpha, terminal.subRegion[terminal.activeBuffer])
 	// Normally, run() would do this.
 	PD.findAndSelect("AlphaText");
-}
+};
 
 // This is really bad because you should only really put WindowRegions in ScreenRegions. I think. I could enforce this.
 function initLogin() {
-	var login = new ScreenRegion("Login");
-	login.initChar='\u00a0';
+	var login = Mixin(ScreenRegionFactory);
+	login.set({ name: "Login", initChar: '\u00a0' });
 	login.hydrate();
 	PD.pushRegion( (function() {
-		var welcomeBox = new BoxRegion("WelcomeBox", 20, 7, 16, 7);
+		var welcomeBox = Mixin(BoxRegionFactory);
+		welcomeBox.set({ name: "WelcomeBox", width: 20, height: 7, x: 16, y: 7 });
 		welcomeBox.hydrate();
 		welcomeBox.decorate();
 		welcomeBox.subRegion.push( (function() {
-			var welcome = new TextRegion("Welcome", 15, 3, 2, 2);
+			var welcome = Mixin(TextRegionFactory);
+			welcome.set({ name: "Welcome", width: 15, height: 3, x: 2, y: 2 });
 			welcome.printText("\tWelcome\r\n  to PunchDeck\r\n---------------");
-			welcome.update();
 			return welcome;
 		})());
 		return welcomeBox;
 	})(), login);
 	PD.pushRegion(login, terminal);
-}
+};
 
 function initDesktop() {
-	var desktop = new ScreenRegion("Desktop");
+	var desktop = Mixin(ScreenRegionFactory);
+	desktop.name="Desktop";
 	desktop.hydrate();
 	PD.pushRegion(initDesktopMenu(), desktop);
 	PD.pushRegion(desktop, terminal);
 	desktop.select();
-}
+};
 
 function initDesktopMenu() {
 	var menuItems = [ { 
 			name: "Meta", 
-			bindings: function(){
+			bindings: [
 				// M
-				PD.setBinding(77, "alt", function(){PD.findAndSelect("MetaButtonContextMenu")})
-			},
+				[77, "alt", function(){PD.findAndSelect("MetaButtonContextMenu")}]
+			],
 			subRegions: [
 				createMenu("MetaButtonContext", [
-					{ name: "Alpha", bindings: function(){
+					{ name: "Alpha", bindings: [
 						// A
-						PD.setBinding(65, "normal", function(){runAlpha()})
-					} },
-					{ name: "Beta", bindings: function(){doNothing()} },
-					{ name: "Zeta", bindings: function(){doNothing()} },
-					{ name: "Eta", bindings: function(){doNothing()} },
-					{ name: "Theta", bindings: function(){doNothing()} }
+						[65, "normal", function(){runAlpha()}]
+					]},
+					{ name: "Beta", bindings: [] },
+					{ name: "Zeta", bindings: [] },
+					{ name: "Eta", bindings: [] },
+					{ name: "Theta", bindings: [] }
 				], 0, 1)
 			]
 		}, {
 			name: "File",
-			bindings: function(){doNothing()},
+			bindings: [],
 			subRegions: 0
 		}, {
 			name: "Edit",
-			bindings: function(){doNothing()},
+			bindings: [],
 			subRegions: 0
 		}, {
 			name: "View",
-			bindings: function(){doNothing()},
+			bindings: [],
 			subRegions: 0
 		}, {
 			name: "Tools",
-			bindings: function(){doNothing()},
+			bindings: [],
 			subRegions: 0
 		}
 	];
 	
 	return createTopBar("Desktop", menuItems);
-}
+};
 	
 // The menu items are composed by the desktop and the selected program.
 function createTopBar(name, menuItems) {
-	var menu=new VanillaRegion(name+"TopBar", 1, 1);
+	var menu = Mixin(RegionFactory);
+	menu.set({name: name+"TopBar", width: 1, height: 1});
 	var totalWidth=0;
 	for (var i=0; i<menuItems.length; i++) {
 		PD.pushRegion( (function() { 
-			var item= new ButtonRegion(menuItems[i].name, menuItems[i].bindings);
+			var item= Mixin(ButtonRegionFactory);
+			item.set({ name: menuItems[i].name, bindings: menuItems[i].bindings});
+			item.hydrate();
 			if (i!==0) {
 				totalWidth += menuItems[i-1].name.length+1;
 				item.x = totalWidth;
@@ -766,35 +782,39 @@ function createTopBar(name, menuItems) {
 	}
 	menu.hydrate();
 	return menu;
-}
+};
 
 // This should really be called a contextual menu. It shares some behaviour with a pop-up message.
 function createMenu(name, menuItems, x, y) { 
-	var menu=new VanillaRegion(name+"Menu", 0, 0, x, y);
+	var menu= Mixin(RegionFactory);
+	menu.set({name: name+"Menu", x: x, y: y});
 	var width=0;
 	for (var i=0; i<menuItems.length; i++) {
 		PD.pushRegion( (function() {
-			var item= new ButtonRegion(menuItems[i].name, menuItems[i].bindings, 0, i);
+			var item= Mixin(ButtonRegionFactory);
+			item.set({ name: menuItems[i].name, bindings: menuItems[i].bindings, y: i});
+			item.hydrate();
 			if (item.width>width) {
 				width=item.width;
 			}
 			return item;
 		})(), menu);
 	}
-	menu.width=width;
-	menu.height=menuItems.length;
-	menu.bindings= function() {doNothing()};
-	menu.update = function() {
-		PD.selected===menu
-		? menu.visible=true
-		: menu.visible=false;
-	}
-	menu.selectFunction = function() {
-		if (PD.selected!==menu) {
-			menu.previouslySelected = PD.selected;
-		}
-	};
-	menu.previouslySelected=0;
+	menu.set({ 
+		width: width,
+		height: menuItems.length,
+		update: function() {
+			PD.selected===menu
+			? menu.visible=true
+			: menu.visible=false;
+		},
+		selectFunction: function() {
+			if (PD.selected!==menu) {
+				menu.previouslySelected = PD.selected;
+			}
+		},
+		previouslySelected: 0
+	});
 	menu.hydrate();
 	return menu;
 };
@@ -802,28 +822,31 @@ function createMenu(name, menuItems, x, y) {
 function testBindings() {
 	// F1
 	// should be terminal.setActiveBuffer
-	PD.setBinding(112, "normal", function(){terminal.activeBuffer=0; terminal.subRegion[0].changed();}); 
+	terminal.bindings = [
+	[112, "normal", function(){terminal.activeBuffer=0; terminal.subRegion[0].changed();}],
 	
 	// F2
-	PD.setBinding(113, "normal", function(){terminal.activeBuffer=1; terminal.subRegion[1].changed();});
+	[113, "normal", function(){terminal.activeBuffer=1; terminal.subRegion[1].changed();}],
 	
 	// F4
 	// can't have more than one instance
-	PD.setBinding(115, "normal", function(){PD.kill("Alpha")});
+	[115, "normal", function(){PD.kill("Alpha")}],
 	
 	// F5
-	PD.setBinding(116, "preventDefault", false);
+	[116, "preventDefault", false],
 	
 	// F11
-	PD.setBinding(122, "preventDefault", false);
+	[122, "preventDefault", false],
 	
 	// F12
-	PD.setBinding(123, "preventDefault", false);
+	[123, "preventDefault", false],
 	
 	// Escape
-	PD.setBinding(27, "normal", function(){PD.escape()});
+	[27, "normal", function(){PD.escape()}],
 	
 	// Alt
 	// alt is alt.
-	PD.setBinding(18, "alt", function(){PD.toggleAltMode()});
-}
+	[18, "alt", function(){PD.toggleAltMode()}]
+	];
+	terminal.setBindings();
+};
