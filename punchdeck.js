@@ -1,34 +1,50 @@
 // could use eval for the command line program
 
+// Need to get rid of name
+
 // I have to draw a circle with Math stuff :^)
 
 // need changing() wrapper that adds this.changed to functions
+// also, I've been using Terminal.reDraw if I can't be bothered to figure out how to changed something, which is dumb.
 
 // I don't really understand what selected is. It's mainly just so that escape works. But it's really difficult to know what should be selectable when I don't have many scenarios yet.
 
 function doNothing() {};
 
 // I am in shock and denial about how well this works.
-// You still can't have private static methods that access instance properties but it doesn't matter because you can have private instance methods that access instance properties and static properties. Not sure how it effects performance but I don't think it's harmful. It's probably less harmful that using prototypes.
-function Mixin(){
-	// build depency list
-	var mixingPot = [];
-	// should recursively get dependencies
-	for (var i=arguments.length-1; i>=0; i--) {
-		mixingPot = arguments[i].dependencies.concat(mixingPot);
-		mixingPot.unshift(arguments[i]);
-	}
-	// should remove duplicates.
-	// should save factory names in a list so that I don't have to do the duck test.
-    var instance = {};
-	for (var i=mixingPot.length-1; i>=0; i--) {
-		// get product from factory, supplying a reference to the instance.
-		var product = mixingPot[i](instance);
-		for(var key in product)
-			instance[key] = product[key];
-	}
-    return instance;
-}
+// You still can't have private static methods that access instance properties but it doesn't matter because you can have private instance methods that access instance properties and static properties.
+// Not sure how mixins effect performance but I don't think it's harmful. It's probably less harmful that using prototypes.
+var mixin = (function(){
+	function getDependencies(args) {
+		var mixingPot = args;
+		for (var i=args.length-1; i>=0; i--) {
+			var dependencies = innerGetDependencies(args[i]);
+			for (var j=0; j<dependencies.length; j++)
+				if (mixingPot.indexOf(dependencies[j])==-1)
+					mixingPot.push(dependencies[j]);
+		}
+		return mixingPot;
+	};
+	function innerGetDependencies(item) {
+		var mixingPot = [];
+		mixingPot.push(item);
+		for (var i=item.dependencies.length-1; i>=0; i--)
+			if (mixingPot.indexOf(item.dependencies[i])==-1)
+				mixingPot = mixingPot.concat(innerGetDependencies(item.dependencies[i]));
+		return mixingPot;
+	};
+	return function() {
+		var mixingPot = getDependencies(Array.prototype.slice.call(arguments));
+		var instance = {};
+		for (var i=mixingPot.length-1; i>=0; i--) {
+			var product = mixingPot[i](instance);
+			for(var key in product)
+				instance[key] = product[key];
+		}
+		instance.composition = mixingPot;
+		return instance;
+	};
+})();
 
 String.prototype.toSpan= function(colour, background) {
 	var span = '<span style="color:'+colour+
@@ -41,56 +57,29 @@ String.prototype.toTag= function(letter) {
 };
 
 // namespace
-var PD = {
-	selected: {}
-};
-
-PD.pushRegion = function(region, pushTo) {
-	region.parent=pushTo;
-	pushTo.subRegion.push(region);
-	region.setBindings();
-	// I tried to use Object.observe once but it didn't work out.
-	// if (region.selectable) {
-	//    region.select();
-	// }
-};
-
-PD.altMode = false;
-
-PD.toggleAltMode = function() {
-	PD.altMode = true;
-	terminal.reDraw();
-};
-
-(function() {
+var PD = (function() {
 	function innerFind(item, name) {
 		for (var i=0; i<item.length; i++) {
-			if (item[i].name===name) {
-				return item[i];
-			}
+			if (item[i].name===name) return item[i];
 			var result = innerFind(item[i].subRegion, name);
-			if (result) {
-				return result;
-			}
+			if (result)	return result;
 		}
 		return 0;
 	};
 	function find(name) {
-		var result= innerFind(terminal.subRegion, name);
+		var result= innerFind(Terminal.subRegion, name);
 		return result || console.log("item " + name + " found");
 	};
 	function bringToFront(item) {
 		var subRegion = item.parent.subRegion;
-		for (var i=0; i<subRegion.length; i++) {
-			if (subRegion[i].name===item.name) {
+		for (var i=0; i<subRegion.length; i++)
+			if (subRegion[i].name===item.name)
 				if (i!==subRegion.length-1) {
 					subRegion.splice(i, 1);
 					PD.pushRegion(item, item.parent);
 					break;
 				}
-			}
-		}
-		if (item.parent.name==="Terminal") { return; }
+		if (item.parent.name==="Terminal") return;
 		bringToFront(item.parent);
 	};
 	function select(item) {
@@ -99,155 +88,173 @@ PD.toggleAltMode = function() {
 		bringToFront(item);
 		PD.selected=item;
 	};
-	PD.findAndSelect= function(name) {
-		var result = find(name);
-		result.select();
-	};
-	PD.kill= function(name) {
-		var result = find(name);
-		var subRegion = result.parent.subRegion;
-		for (var i=0; i<subRegion.length; i++) {
-			if (subRegion[i].name===name) {
-				subRegion.splice(i, 1);
-				result.parent.changed();
-				return;
-			}
+	return {
+		selected: {},
+		debugMode: false,
+		pushRegion: function(region, pushTo) {
+			region.parent=pushTo;
+			pushTo.subRegion.push(region);
+			// I tried to use Object.observe once but it didn't work out.
+			// if (region.selectable) {
+			//    region.select();
+			// }
+		},
+		findAndSelect: function(name) {
+			var result = find(name);
+			result.select();
+		},
+		// Kill by reference instead, and do it in Region.
+		kill: function(name) {
+			var result = find(name);
+			var subRegion = result.parent.subRegion;
+			for (var i=0; i<subRegion.length; i++)
+				if (subRegion[i].name===name) {
+					subRegion.splice(i, 1);
+					result.parent.changed();
+					break;
+				}
+		},
+		killActiveProgram: function() {
+			if (openPrograms.length-1)
+				openPrograms[openPrograms.length-2].select();
+			var name = openPrograms[activeProgram].name;
+			PD.kill(name);
+			activeProgram--;
+			for (var i=0; i<openPrograms.length; i++)
+				if (openPrograms[i].name == name)
+					openPrograms.splice(i, 1);
+		},
+		setSelected: function(item) {
+			select(item);
+		},
+		escape: function() {
+			var item = PD.selected;
+			if (item.hasOwnProperty("previouslySelected"))
+				// what if kill?
+				if (item.previouslySelected) select(item.previouslySelected);
+				// hasOwnProperty? Really?
+		},
+		toggleDebugMode: function() {
+			PD.debugMode
+			? PD.debugMode = false
+			: PD.debugMode = true;
+			Terminal.reDraw();
 		}
-	};
-	PD.setSelected = function(item) {
-		select(item);
-	};
-	PD.escape = function() {
-		var item = PD.selected;
-		if (item.hasOwnProperty("previouslySelected")) {
-			if (item.previouslySelected) {
-				select(item.previouslySelected);
-			}
-		}
-			// Here's how it should work. When we select a contextual menu, through it's binding, the contextual menu has a special selectFunction which saves PD.selected to this.previouslySelected or something. Then we just select previouslySelected here. This is assuming that we don't want to create and kill a contextual menu every time, which I think is fair. We might never want to kill anything at all.
-			// terminal.reDraw(); // later I could work on a thing that only reDraws if an that exceeds it's parent region has changed, and only do parent.changed otherwise.
-		
-	};
+	}
 })();
 
 // This stuff should all be in the PD namespace but I cba
-// Planning to have multiple terminals one day.
-var terminal= {
-	name: "Terminal",
 
-	subRegion: [],
-	activeBuffer: 0,
+// One day this will inherit from ScreenRegion, but there's some cirular dependency shit going on and I don't give a fuck right now. I guess some modules are like child modules of Terminal. On the whole, ScreenRegions and WindowRegions are pretty stupid now so I might kill them.
+function TerminalModule(instance) {
+	var that = instance;
 	
-	hasChanged: true,
-	
-	bindings: [],
-	setBindings: function() {
-		for (var i=0; i<terminal.bindings.length; i++) {
-			PD.setBinding(terminal.bindings[i]);
-		}
-	}
-};
-
-(function() {
-	terminal.pxWidth= 500;
-	terminal.pxHeight= 500;
-
-	terminal.width= Math.floor(terminal.pxWidth/9.5);
-	terminal.height= Math.floor(terminal.pxHeight/18.5);
-
 	var lines=[];
 	var container={};
+	var pxWidth= 500;
+	var pxHeight= 500;
+	return Terminal= {
+		name: "Terminal",
+		subRegion: [],
+		activeBuffer: 0,
+		hasChanged: true,
+		bindings: [],
 	
-	terminal.realign= function () {
-		var w=window.innerWidth;
-		var h=window.innerHeight;
-		container.style.width=terminal.pxWidth;
-		container.style.height=terminal.pxHeight;
-		container.style.top=((h/2)-(terminal.pxHeight/2))+"px";
-		container.style.left=((w/2)-(terminal.pxWidth/2))+"px";
-	};
-	terminal.init= (function() {
-		function constructDivs() {
-			for (var y=0; y<terminal.height; y++) {
-				var node=document.createElement("DIV");
-				node.id="line"+y;
-				container.appendChild(node);
-				lines[y]=node;
-			}
-		};
-		
-		return function () {
-			container=document.getElementById("terminal");
-			terminal.realign();
-			constructDivs();
-			PD.initKeys();
-			crappyTest();
-			setInterval(terminal.update, 32); // fixed 30fps
-		};
-	})();
-
-	terminal.update = (function() {
-		function getLine(y) {
-			var line="";
-			var offset=y*terminal.width;
-			for (var i=offset; i<offset+terminal.width; i++) {
-				line+=textBuffer.buffer[i];
-			}
-			return line;
-		};
-		function draw(toDraw) {
-			drawRegion(0, toDraw, false);
-			terminal.hasChanged=false;
-		};
-		// Don't like plopping this here.
-		terminal.reDraw = function() {
-			drawRegion(0, terminal.subRegion[terminal.activeBuffer], true);
-		};
-		function render(offset, toDraw) {
-			var i=offset;
-			for (var y=0; y<toDraw.height; y++) {
-				for (var x=0; x<toDraw.width; x++) {
-					var element = toDraw.buffer[toDraw.getPointer(x, y)];
-					// "duck test"
-					if (toDraw.hasOwnProperty("encodedBuffer")||toDraw.hasOwnProperty("altBuffer")) {
-						textBuffer.buffer[i]=element;
-					} else {
-						textBuffer.buffer[i]=element.toSpan(toDraw.colour, toDraw.background);
-					}
-					i++;
+		width: Math.floor(pxWidth/9.5),
+		height: Math.floor(pxHeight/18.5),
+		setBindings: function() {
+			PD.setBindings(that.bindings);
+		},
+		altMode: false,
+		toggleAltMode: function() {
+			that.altMode = true;
+			that.reDraw();
+		},
+		realign: function () {
+			var w=window.innerWidth;
+			var h=window.innerHeight;
+			container.style.width=pxWidth;
+			container.style.height=pxHeight;
+			container.style.top=((h/2)-(pxHeight/2))+"px";
+			container.style.left=((w/2)-(pxWidth/2))+"px";
+		},
+		init: (function() {
+			function constructDivs() {
+				for (var y=0; y<that.height; y++) {
+					var node=document.createElement("DIV");
+					node.id="line"+y;
+					container.appendChild(node);
+					lines[y]=node;
 				}
-				i+=textBuffer.width-toDraw.width;
+			};
+			return function () {
+				container=document.getElementById("terminal");
+				that.realign();
+				constructDivs();
+				PD.initKeys();
+				crappyTest();
+				setInterval(that.update, 32); // fixed 30fps
+			};
+		})(),
+		update: (function() {
+			function getLine(y) {
+				var line="";
+				var offset=y*that.width;
+				for (var i=offset; i<offset+that.width; i++)
+					line+=that.buffer.buffer[i];
+				return line;
+			};
+			function draw(toDraw) {
+				drawRegion(0, toDraw, false);
+				that.hasChanged=false;
+			};
+			// Don't like plopping this here but don't like breaking it out either.
+			that.reDraw = function() {
+				drawRegion(0, that.subRegion[that.activeBuffer], true);
+			};
+			function render(offset, toDraw) {
+				var i=offset;
+				for (var y=0; y<toDraw.height; y++) {
+					for (var x=0; x<toDraw.width; x++) {
+						var element = toDraw.buffer[toDraw.getPointer(x, y)];
+						if (toDraw.composition.indexOf(EncodedTextRegionModule)!=-1)
+							that.buffer.buffer[i]=element;
+						else that.buffer.buffer[i]=element.toSpan(toDraw.colour, toDraw.background);
+						i++;
+					}
+					i+=that.buffer.width-toDraw.width;
+				}
+				toDraw.hasChanged=false;
 			}
-			toDraw.hasChanged=false;
-		}
-		// implement paul blart here
-		function drawRegion(offset, toDraw, parentChanged) {
-			var thisChanged=false;
-			if (toDraw.hasChanged==true||parentChanged==true) {
-				toDraw.update();
-				if (!toDraw.visible) { return; }
-				offset+=(toDraw.y*terminal.width)+toDraw.x;
-				thisChanged=true;
-				render(offset, toDraw);
-			} else {
-				offset+=(toDraw.y*terminal.width)+toDraw.x; // gay
-			}
-			
-			for (var i=0; i<toDraw.subRegion.length; i++) {
-				drawRegion(offset, toDraw.subRegion[i], thisChanged);
-			}
-		};
-		return function () {
-			if (!terminal.hasChanged) { return; }
-			draw(terminal.subRegion[terminal.activeBuffer]);
-			for (var y=0; y<terminal.height; y++) {
-				lines[y].innerHTML=getLine(y);
-			}
-		};
-	})();
-})();
+			// implement paul blart here
+			function drawRegion(offset, toDraw, parentChanged) {
+				var thisChanged=false;
+				if (toDraw.hasChanged==true||parentChanged==true) {
+					toDraw.update();
+					if (!toDraw.visible) return;
+					offset+=(toDraw.y*that.width)+toDraw.x;
+					thisChanged=true;
+					render(offset, toDraw);
+				} else offset+=(toDraw.y*that.width)+toDraw.x; // gay
+				for (var i=0; i<toDraw.subRegion.length; i++)
+					drawRegion(offset, toDraw.subRegion[i], thisChanged);
+			};
+			return function () {
+				if (!that.hasChanged) return;
+				draw(that.subRegion[that.activeBuffer]);
+				for (var y=0; y<that.height; y++)
+					lines[y].innerHTML=getLine(y);
+			};
+		})()
+	};
+};
 
-function RegionFactory(instance) {
+TerminalModule.dependencies = [];
+
+var Terminal = mixin(TerminalModule);
+
+// I think Regions should be able to kill themselves. lol.
+function RegionModule(instance) {
 	var that = instance;
 	return Region = {
 		name : "",
@@ -263,9 +270,10 @@ function RegionFactory(instance) {
 		subRegion:[],
 		bindings : [],
 		setBindings: function() {
-			for (var i=0; i<that.bindings.length; i++) {
-				PD.setBinding(that.bindings[i]);
-			}
+			PD.setBindings(that.bindings);
+		},
+		setTemporaryBindings: function() {
+			PD.setTemporaryBindings(that.bindings);
 		},
 		selectFunction : function() {doNothing()},
 		select : function() {
@@ -274,13 +282,12 @@ function RegionFactory(instance) {
 		},
 		hydrate : function() {
 			var length = that.width*that.height;
-			for (var i=0; i<length; i++) {
+			for (var i=0; i<length; i++)
 				that.buffer[i] = that.initChar;
-			}
 		},
 		hasChanged : true,
 		changed : function() {
-			terminal.hasChanged=true;
+			Terminal.hasChanged=true;
 			that.hasChanged=true;
 		},
 		update:function() {doNothing()},
@@ -291,46 +298,41 @@ function RegionFactory(instance) {
 			return (y*that.width)+x;
 		},
 		set: function() {
-			for (var key in arguments[0]) {
+			for (var key in arguments[0])
 				that[key] = arguments[0][key];
-			}
 		}
 	};
 };
 
-RegionFactory.dependencies = [];
+RegionModule.dependencies = [];
 
-function ScreenRegionFactory(instance) {
-	var that = instance;
+function ScreenRegionModule() {
 	return ScreenRegion = {
-		width: terminal.width,
-		height: terminal.height,
+		width: Terminal.width,
+		height: Terminal.height,
 		initChar:'\u2593'
 	};
 };
 
-ScreenRegionFactory.dependencies = [RegionFactory];
+ScreenRegionModule.dependencies = [RegionModule];
 
-// I wanted this to be higher up in terminal or something but closures.
-var textBuffer = Mixin(ScreenRegionFactory);
-textBuffer.set({ name: "TextBuffer", initChar: '\u2588' });
-textBuffer.hydrate();
+// I wanted this to be mixed-in to Terminal but circular dependencies.
+Terminal.buffer = mixin(ScreenRegionModule);
+Terminal.buffer.set({ name: "TerminalBuffer", initChar: '\u2588' });
+Terminal.buffer.hydrate();
 
 // assumes that all windows are created fullscreen.
-function WindowRegionFactory(instance) {
-	var that = instance;
+function WindowRegionModule() {
 	return WindowRegion = {
-		width: terminal.width,
-		height: terminal.height-1,
+		width: Terminal.width,
+		height: Terminal.height-2,
 		y: 1
 	};
 };
 
-WindowRegionFactory.dependencies = [RegionFactory];
+WindowRegionModule.dependencies = [RegionModule];
 
-// VanillaRegion is not a thing.
-
-function BoxRegionFactory(instance) {
+function BoxRegionModule(instance) {
 	var that = instance;
 	return BoxRegion = {
 		decorate : (function () {
@@ -356,16 +358,14 @@ function BoxRegionFactory(instance) {
 			function horizontalLine(x, y, ch, length) {
 				var thisLength=length||that.width;
 				pointerAt(x, y);
-				for (var i=0; i<thisLength; i++) {
+				for (var i=0; i<thisLength; i++)
 					horizontalPrint(ch);
-				}
 			};
 			function verticalLine(x, y, ch, length) {
 				var thisLength=length||that.height;
 				pointerAt(x, y);
-				for (var i=0; i<thisLength; i++) {
+				for (var i=0; i<thisLength; i++)
 					verticalPrint(ch);
-				}
 			};
 			return function() {
 				horizontalLine(0, 0, '\u2500');
@@ -381,13 +381,13 @@ function BoxRegionFactory(instance) {
 	};
 }
 
-BoxRegionFactory.dependencies = [RegionFactory];
+BoxRegionModule.dependencies = [RegionModule];
 
-var EncodedTextRegionFactory = (function() {
+var EncodedTextRegionModule = (function() {
 	var tabSize= 4;
 	// newLineMode ( \r\n or \n )
 	
-	return Factory = function(instance) {
+	return Module = function(instance) {
 		var that = instance;
 		var wrap= function(symbol) {
 			var ch=symbol[0];
@@ -397,30 +397,32 @@ var EncodedTextRegionFactory = (function() {
 			var bold=symbol[4];
 			var italics=symbol[5];
 			
-			if (underlined) {ch=ch.toTag("u")};
-			if (bold) {ch=ch.toTag("b")};
-			if (italics) {ch=ch.toTag("i")};
+			if (underlined) ch=ch.toTag("u");
+			if (bold) ch=ch.toTag("b");
+			if (italics) ch=ch.toTag("i");
 			return ch.toSpan(colour, background);
 		};
 		return EncodedTextRegion = {
 			encodedBuffer: [],
 			encodedPointer: 0,
 			pointer: 0,
-			
+			hydrate : function() {
+				var length = that.width*that.height;
+				for (var i=0; i<length; i++)
+					that.buffer[i] = that.initChar.toSpan(that.colour, that.background);
+			},
 			update: (function() {
 				var helperPointer=0;
 				var tab = function() {
 					var x = that.getVector(helperPointer).x;
-					for (var i=x%tabSize; i<tabSize; i++) {
+					for (var i=x%tabSize; i<tabSize; i++)
 						printSpace();
-					}
 				};
 				var newLine = function() {
-					for (var i=that.getVector(helperPointer).x; i<that.width; i++) {
+					for (var i=that.getVector(helperPointer).x; i<that.width; i++)
 						printSpace();
-					}
 				};
-				// it looks weird that spaces arn't underlined. Fuck it, it's by design.
+				// it looks weird that spaces arn't underlined. Can't fix it until token parsing.
 				var printSpace= function() {
 					helperPrint(['\u00a0', "black", "white", false, false, false]);
 				};
@@ -450,9 +452,8 @@ var EncodedTextRegionFactory = (function() {
 					that.pointer=0;
 					for (var i=0; i<that.encodedBuffer.length; i++) {
 						decode(that.encodedBuffer[i]);
-						if (i+1===that.encodedPointer) {
+						if (i+1===that.encodedPointer)
 							that.pointer=helperPointer;
-						}
 					}
 				};
 			})()
@@ -460,9 +461,9 @@ var EncodedTextRegionFactory = (function() {
 	};
 })();
 
-EncodedTextRegionFactory.dependencies = [RegionFactory];
+EncodedTextRegionModule.dependencies = [RegionModule];
 
-var EditableTextRegionFactory = (function() {
+var EditableTextRegionModule = (function() {
 	var insertMode=true;
 	var capsLock=false;
 	var colourMode= '#1D5FA1';
@@ -486,13 +487,9 @@ var EditableTextRegionFactory = (function() {
 		: italics=true;
 	};
 	var getCursor= function() {
-		//haxx
-		if (PD.selected.hasOwnProperty("save")) {
+		if (PD.selected.composition.indexOf(EditableTextRegionModule)!=-1)
 			return PD.selected.subRegion[0];
-		}
-		else {
-			return 0;
-		}
+		else return 0;
 	};
 	var toggleInsertMode = function () {
 		var cursor=getCursor();
@@ -518,16 +515,14 @@ var EditableTextRegionFactory = (function() {
 		return function() {
 			clearInterval(timer);
 			var cursor=getCursor();
-			if (cursor) {
-				cursor.visible=true;
-			}
+			if (cursor) cursor.visible=true;
 			timer=setInterval(toggleCursor, 350);
 		};
 	})();
 	function encode(symbol) {
 		return [symbol, colourMode, background, underlined, bold, italics];
 	};
-	return Factory = function(instance) {
+	return Module = function(instance) {
 		var that = instance;
 		var EditableTextRegion = {
 			bindings: (function() {
@@ -544,9 +539,8 @@ var EditableTextRegionFactory = (function() {
 			},
 			cursorLeft: function () {
 				startTimer();
-				if (that.encodedPointer>0) {
+				if (that.encodedPointer>0)
 					that.encodedPointer--;
-				}
 				that.changed();
 			},
 			print: function (symbol) {
@@ -570,9 +564,8 @@ var EditableTextRegionFactory = (function() {
 			},
 			save: function() {
 				var data="";
-				for (var i=0; i<that.encodedBuffer.length; i++) {
+				for (var i=0; i<that.encodedBuffer.length; i++)
 					data+=that.encodedBuffer[i][0];
-				}
 				window.open('data:text/csv;charset=utf-8,' + encodeURIComponent(data));
 			},
 			toggleCapsLock: (function() {
@@ -590,7 +583,7 @@ var EditableTextRegionFactory = (function() {
 			})()
 		};
 		PD.pushRegion( (function () {
-			var cursor = Mixin(RegionFactory);
+			var cursor = mixin(RegionModule);
 			cursor.set({name: "Cursor", width: 1, height: 1, visible: false});
 			cursor.buffer[0]='\u2588';
 			cursor.update=function () {
@@ -605,16 +598,17 @@ var EditableTextRegionFactory = (function() {
 	};
 })();
 
-EditableTextRegionFactory.dependencies = [EncodedTextRegionFactory, RegionFactory];
+EditableTextRegionModule.dependencies = [EncodedTextRegionModule];
 
-function TextRegionFactory(instance) {
+function TextRegionModule(instance) {
 	var that = instance;
 	return TextRegion = {
 		// fuck style for now. But I could work out a way of encoding it like \#FFFFFF or whatever.
 		printText: function(text) {
+			that.encodedBuffer = [];
 			for (var i=0; i<text.length; i++) {
 				// for fucks sake microsoft
-				if (text[i]!=="\r") { that.encodedBuffer.push([text[i], that.colour, that.background, false, false, false]); }
+				if (text[i]!=="\r") that.encodedBuffer.push([text[i], that.colour, that.background, false, false, false]);
 				else {
 					that.encodedBuffer.push(["\r\n", that.colour, that.background, false, false, false]);
 					i++;
@@ -624,18 +618,18 @@ function TextRegionFactory(instance) {
 	};
 };
 
-TextRegionFactory.dependencies = [EncodedTextRegionFactory, RegionFactory];
+TextRegionModule.dependencies = [EncodedTextRegionModule];
 
 // Every button has a shortcut. I think the index should be chosen programmatically, and it might be easy. altBuffer should only be seen when the bindings are active.
 // Still doesn't support funky greek letters.
-// ie. all text should be encoded text duuuhhhh.
-function ButtonRegionFactory(instance) {
+// This should be an EncodedTextRegion but it can't be because it has a special update, so I could put the text inside the button and leave the button textless. SO COMPLICATED THO
+function ButtonRegionModule(instance) {
 	var that = instance;
 	return ButtonRegion = {
 		index: 0,
 		height: 1,
 		update : function() {
-			PD.altMode
+			Terminal.altMode
 			? that.buffer=that.altBuffer
 			: that.buffer=that.bufferCache;
 			that.changed();
@@ -643,24 +637,35 @@ function ButtonRegionFactory(instance) {
 		hydrate: function() {
 			that.width = that.name.length;
 			var newBuffer=[];
-			for (var i=0; i<that.name.length; i++) {
+			for (var i=0; i<that.name.length; i++)
 				newBuffer[i]=that.name[i].toSpan(that.colour, that.background);
-			}
 			that.buffer= newBuffer.slice();
 			that.bufferCache = newBuffer.slice();
 			
-			for (var i=0; i<that.name.length; i++) {
+			for (var i=0; i<that.name.length; i++)
 				if (i==that.index) {
 					newBuffer[i]=that.name[i].toSpan(that.colour, that.background).toTag('u');
 					break;
 				}
-			}
 			that.altBuffer = newBuffer.slice();
 		}
 	};
 };
 
-ButtonRegionFactory.dependencies = [RegionFactory];
+ButtonRegionModule.dependencies = [RegionModule];
+
+// Woah this is hard.
+function ScrollingRegionModule(instance) {
+	var that = instance;
+	return ScrollingRegion = {
+		overflowX: that.width,
+		overflowY: that.height,
+		scrollBarChar: '\u2588',
+		scrollBackgroundChar: '\u2593'
+	};
+};
+
+ScrollingRegionModule.dependencies = [RegionModule];
 
 // Scripts //
 
@@ -669,54 +674,145 @@ function crappyTest() {
 	initLogin();
 	initDesktop();
 	testBindings();
+	debug.visible = true;
 };
-	
-// I feel like a run(program) function is coming. it would create the program, select it.
-function runAlpha() {
-	var alpha = Mixin(WindowRegionFactory);
-	alpha.set({ name: "Alpha", initChar: '\u2591' });
+
+var PID = 0;
+
+function Alpha() {
+	var alpha = mixin(WindowRegionModule);
+	alpha.set({
+		name: "Alpha"+PID,
+		initChar: '\u2591',
+		icon: '\u00a0'+'\u0391'+'\u00a0'
+	});
+	PID++;
+	openPrograms.push(alpha);
+	activeProgram++;
 	PD.pushRegion( (function() {
-		var alphaText = Mixin(EditableTextRegionFactory);
+		var alphaText = mixin(EditableTextRegionModule);
 		alphaText.set({ name: "AlphaText", width: 24, height: 12, x: 2, y: 1 });
+		alphaText.setBindings();
 		return alphaText;
 	})(), alpha);
+	alpha.setBindings();
 	alpha.hydrate();
-	PD.pushRegion(alpha, terminal.subRegion[terminal.activeBuffer])
-	// Normally, run() would do this.
+	PD.pushRegion(alpha, Terminal.subRegion[Terminal.activeBuffer]);
 	PD.findAndSelect("AlphaText");
+	Terminal.reDraw();
 };
+
+var scrollRegionTest = mixin(ScrollingRegionModule);
+scrollRegionTest.set({
+	width: 30,
+	height: 20,
+	x: 3,
+	y: 1
+});
 
 // This is really bad because you should only really put WindowRegions in ScreenRegions. I think. I could enforce this.
 function initLogin() {
-	var login = Mixin(ScreenRegionFactory);
+	var login = mixin(ScreenRegionModule);
 	login.set({ name: "Login", initChar: '\u00a0' });
 	login.hydrate();
 	PD.pushRegion( (function() {
-		var welcomeBox = Mixin(BoxRegionFactory);
+		var welcomeBox = mixin(BoxRegionModule);
 		welcomeBox.set({ name: "WelcomeBox", width: 20, height: 7, x: 16, y: 7 });
 		welcomeBox.hydrate();
 		welcomeBox.decorate();
 		welcomeBox.subRegion.push( (function() {
-			var welcome = Mixin(TextRegionFactory);
+			var welcome = mixin(TextRegionModule);
 			welcome.set({ name: "Welcome", width: 15, height: 3, x: 2, y: 2 });
 			welcome.printText("\tWelcome\r\n  to PunchDeck\r\n---------------");
 			return welcome;
 		})());
 		return welcomeBox;
 	})(), login);
-	PD.pushRegion(login, terminal);
+	PD.pushRegion(login, Terminal);
 };
 
+var debugCoordinates = mixin(TextRegionModule);
+debugCoordinates.set({
+	width: 22,
+	height: 1,
+	x: 30,
+	visible: false,
+	colour: "black"
+});
+
+var debug = mixin(RegionModule);
+debug.set({
+	update: function() {
+		PD.debugMode
+		? debug.subRegion[0].visible=true
+		: debug.subRegion[0].visible=false;
+	}
+});
+
+PD.pushRegion(debugCoordinates, debug);
+
+var taskBar = mixin(RegionModule);
+taskBar.set({
+	name: "TaskBar",
+	width: Terminal.width,
+	height: 1,
+	y: Terminal.height-1,
+	initChar: '\u2588',
+	update: function() {
+		// remove all buttons
+		taskBar.subRegion = [];
+		var totalWidth=0;
+		// for each open program
+		for (var i=0; i<openPrograms.length; i++) {
+			// create a icon (in a similar way to top bar)
+			var icon = mixin(TextRegionModule);
+			icon.width = 3;
+			icon.height = 1;
+			if (i!==0) {
+				totalWidth += icon.width+1;
+				icon.x = totalWidth;
+			}
+			icon.printText(openPrograms[i].icon);
+			// and push the icon to taskBar
+			PD.pushRegion(icon, taskBar);
+		}
+	}
+});
+taskBar.hydrate();
+var activeProgram = -1;
+
+// When we run any program, we need to give it a unique id. 
+var openPrograms = [];
+
 function initDesktop() {
-	var desktop = Mixin(ScreenRegionFactory);
+	var desktop = mixin(ScreenRegionModule);
 	desktop.name="Desktop";
 	desktop.hydrate();
 	PD.pushRegion(initDesktopMenu(), desktop);
-	PD.pushRegion(desktop, terminal);
+	PD.pushRegion(desktop, Terminal);
+	PD.pushRegion(debug, desktop);
+	PD.pushRegion(taskBar, desktop);
 	desktop.select();
 };
 
+var programs = [
+	// Why can't I just put a reference to Alpha here? :(
+	{name: "Alpha", action: function(){Alpha()}, binding: 65}
+];
+
+// returns array of {name: , bindings:} bindings.
+function createMetaMenuItems() {
+	var menuItems = [];
+	for (var i=0; i<programs.length; i++)
+		menuItems[i] = {
+			name: programs[i].name,
+			bindings: [[programs[i].binding, "normal", programs[i].action]]
+		};
+	return menuItems;
+};
+
 function initDesktopMenu() {
+	var metaMenuItems = createMetaMenuItems();
 	var menuItems = [ { 
 			name: "Meta", 
 			bindings: [
@@ -724,58 +820,31 @@ function initDesktopMenu() {
 				[77, "alt", function(){PD.findAndSelect("MetaButtonContextMenu")}]
 			],
 			subRegions: [
-				createMenu("MetaButtonContext", [
-					{ name: "Alpha", bindings: [
-						// A
-						[65, "normal", function(){runAlpha()}]
-					]},
-					{ name: "Beta", bindings: [] },
-					{ name: "Zeta", bindings: [] },
-					{ name: "Eta", bindings: [] },
-					{ name: "Theta", bindings: [] }
-				], 0, 1)
+				createMenu("MetaButtonContext", metaMenuItems, 0, 1)
 			]
-		}, {
-			name: "File",
-			bindings: [],
-			subRegions: 0
-		}, {
-			name: "Edit",
-			bindings: [],
-			subRegions: 0
-		}, {
-			name: "View",
-			bindings: [],
-			subRegions: 0
-		}, {
-			name: "Tools",
-			bindings: [],
-			subRegions: 0
 		}
 	];
-	
 	return createTopBar("Desktop", menuItems);
 };
-	
-// The menu items are composed by the desktop and the selected program.
+
+// The active program should add items to this menu.
 function createTopBar(name, menuItems) {
-	var menu = Mixin(RegionFactory);
+	var menu = mixin(RegionModule);
 	menu.set({name: name+"TopBar", width: 1, height: 1});
 	var totalWidth=0;
 	for (var i=0; i<menuItems.length; i++) {
 		PD.pushRegion( (function() { 
-			var item= Mixin(ButtonRegionFactory);
+			var item= mixin(ButtonRegionModule);
 			item.set({ name: menuItems[i].name, bindings: menuItems[i].bindings});
 			item.hydrate();
+			item.setBindings();
 			if (i!==0) {
 				totalWidth += menuItems[i-1].name.length+1;
 				item.x = totalWidth;
 			}
-			if (menuItems[i].subRegions) {
-				for (var j=0; j<menuItems[i].subRegions.length; j++) {
+			if (menuItems[i].subRegions)
+				for (var j=0; j<menuItems[i].subRegions.length; j++)
 					PD.pushRegion(menuItems[i].subRegions[j], item);
-				}
-			}
 			return item;
 		})(), menu);
 		menu.width=totalWidth+menuItems[i].name.length+1;
@@ -786,17 +855,16 @@ function createTopBar(name, menuItems) {
 
 // This should really be called a contextual menu. It shares some behaviour with a pop-up message.
 function createMenu(name, menuItems, x, y) { 
-	var menu= Mixin(RegionFactory);
+	var menu= mixin(RegionModule);
 	menu.set({name: name+"Menu", x: x, y: y});
 	var width=0;
 	for (var i=0; i<menuItems.length; i++) {
 		PD.pushRegion( (function() {
-			var item= Mixin(ButtonRegionFactory);
+			var item= mixin(ButtonRegionModule);
 			item.set({ name: menuItems[i].name, bindings: menuItems[i].bindings, y: i});
 			item.hydrate();
-			if (item.width>width) {
-				width=item.width;
-			}
+			item.setTemporaryBindings();
+			if (item.width>width) width=item.width;
 			return item;
 		})(), menu);
 	}
@@ -805,13 +873,11 @@ function createMenu(name, menuItems, x, y) {
 		height: menuItems.length,
 		update: function() {
 			PD.selected===menu
-			? menu.visible=true
-			: menu.visible=false;
+			? (function() {menu.visible=true; activeKeyBuffer=altKeys;})()
+			: (function() {menu.visible=false; activeKeyBuffer=keys;})();
 		},
 		selectFunction: function() {
-			if (PD.selected!==menu) {
-				menu.previouslySelected = PD.selected;
-			}
+			if (PD.selected!==menu)	menu.previouslySelected = PD.selected;
 		},
 		previouslySelected: 0
 	});
@@ -821,32 +887,37 @@ function createMenu(name, menuItems, x, y) {
 
 function testBindings() {
 	// F1
-	// should be terminal.setActiveBuffer
-	terminal.bindings = [
-	[112, "normal", function(){terminal.activeBuffer=0; terminal.subRegion[0].changed();}],
-	
-	// F2
-	[113, "normal", function(){terminal.activeBuffer=1; terminal.subRegion[1].changed();}],
-	
-	// F4
-	// can't have more than one instance
-	[115, "normal", function(){PD.kill("Alpha")}],
-	
-	// F5
-	[116, "preventDefault", false],
-	
-	// F11
-	[122, "preventDefault", false],
-	
-	// F12
-	[123, "preventDefault", false],
-	
-	// Escape
-	[27, "normal", function(){PD.escape()}],
-	
-	// Alt
-	// alt is alt.
-	[18, "alt", function(){PD.toggleAltMode()}]
+	// should be Terminal.setActiveBuffer
+	Terminal.bindings = [
+		[112, "normal", function(){Terminal.activeBuffer=0; Terminal.subRegion[0].changed();}],
+		
+		// F2
+		[113, "normal", function(){Terminal.activeBuffer=1; Terminal.subRegion[1].changed();}],
+		
+		// F4
+		// can't have more than one instance
+		// Also this kills the menu item atm
+		// [115, "normal", function(){PD.kill("Alpha")}],
+		[115, "normal", function(){PD.killActiveProgram()}],
+		
+		// F5
+		[116, "preventDefault", false],
+		
+		// F11
+		[122, "preventDefault", false],
+		
+		// F12
+		[123, "preventDefault", false],
+		
+		// Escape
+		[27, "normal", function(){PD.escape()}],
+		
+		// Alt
+		// alt is alt.
+		[18, "alt", function(){Terminal.toggleAltMode()}],
+		
+		// F6
+		[117, "normal", function(){PD.toggleDebugMode()}]
 	];
-	terminal.setBindings();
+	Terminal.setBindings();
 };
