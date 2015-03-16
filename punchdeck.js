@@ -1,13 +1,13 @@
-// could use eval for the command line program
-
-// Need to get rid of name
+// Easy way to change colour scheme?
+// I want it to be like, classic 70s shades of beige with touches of red and blue.
+// I also want to experiment with a white + primary colours scheme.
 
 // I have to draw a circle with Math stuff :^)
 
-// need changing() wrapper that adds this.changed to functions
+// changing() wrapper that adds this.changed to functions?
 // also, I've been using Terminal.reDraw if I can't be bothered to figure out how to changed something, which is dumb.
 
-// I don't really understand what selected is. It's mainly just so that escape works. But it's really difficult to know what should be selectable when I don't have many scenarios yet.
+// I don't really understand what selected is. It's mainly just so that escape works.
 
 function doNothing() {};
 
@@ -85,6 +85,7 @@ var PD = (function() {
 	function select(item) {
 		// fk it i dnt evn care nymore
 		item.changed();
+		item.setBindings();
 		bringToFront(item);
 		PD.selected=item;
 	};
@@ -103,30 +104,27 @@ var PD = (function() {
 			var result = find(name);
 			result.select();
 		},
-		// Kill by reference instead, and do it in Region.
-		kill: function(name) {
-			var result = find(name);
-			var subRegion = result.parent.subRegion;
+		// can only kill programs I think
+		kill: function(item) {
+			var subRegion = item.parent.subRegion;
 			for (var i=0; i<subRegion.length; i++)
-				if (subRegion[i].name===name) {
+				if (subRegion[i]==item) {
 					subRegion.splice(i, 1);
-					result.parent.changed();
+					item.parent.changed();
 					break;
 				}
-		},
-		killActiveProgram: function() {
+			// WRONG. needs selection chain...
 			if (openPrograms.length-1)
 				openPrograms[openPrograms.length-2].select();
-			var name = openPrograms[activeProgram].name;
-			PD.kill(name);
 			activeProgram--;
 			for (var i=0; i<openPrograms.length; i++)
-				if (openPrograms[i].name == name)
+				if (openPrograms[i]==item)
 					openPrograms.splice(i, 1);
 		},
 		setSelected: function(item) {
 			select(item);
 		},
+		// Maybe you can only press escape from a pop-up / contextual menu
 		escape: function() {
 			var item = PD.selected;
 			if (item.hasOwnProperty("previouslySelected"))
@@ -163,7 +161,7 @@ function TerminalModule(instance) {
 		width: Math.floor(pxWidth/9.5),
 		height: Math.floor(pxHeight/18.5),
 		setBindings: function() {
-			PD.setBindings(that.bindings);
+			PD.setBindings(that.bindings, PD.terminalKeys);
 		},
 		altMode: false,
 		toggleAltMode: function() {
@@ -204,7 +202,7 @@ function TerminalModule(instance) {
 					line+=that.buffer.buffer[i];
 				return line;
 			};
-			function draw(toDraw) {
+			function partialReDraw(toDraw) {
 				drawRegion(0, toDraw, false);
 				that.hasChanged=false;
 			};
@@ -212,6 +210,7 @@ function TerminalModule(instance) {
 			that.reDraw = function() {
 				drawRegion(0, that.subRegion[that.activeBuffer], true);
 			};
+			// The time has come to address what happends when things overflow
 			function render(offset, toDraw) {
 				var i=offset;
 				for (var y=0; y<toDraw.height; y++) {
@@ -241,7 +240,7 @@ function TerminalModule(instance) {
 			};
 			return function () {
 				if (!that.hasChanged) return;
-				draw(that.subRegion[that.activeBuffer]);
+				partialReDraw(that.subRegion[that.activeBuffer]);
 				for (var y=0; y<that.height; y++)
 					lines[y].innerHTML=getLine(y);
 			};
@@ -253,10 +252,10 @@ TerminalModule.dependencies = [];
 
 var Terminal = mixin(TerminalModule);
 
-// I think Regions should be able to kill themselves. lol.
 function RegionModule(instance) {
 	var that = instance;
 	return Region = {
+		// name is not mandatory anymore.
 		name : "",
 		width : 0,
 		height : 0,
@@ -264,16 +263,14 @@ function RegionModule(instance) {
 		y : 0,
 		initChar:'\u00a0', // if '' then transparent
 		visible:true,
-		colour:'#1D5FA1',
+		colour:'5C80BF',
 		background:'white',
 		buffer:[],
 		subRegion:[],
 		bindings : [],
+		// publishBindings?
 		setBindings: function() {
-			PD.setBindings(that.bindings);
-		},
-		setTemporaryBindings: function() {
-			PD.setTemporaryBindings(that.bindings);
+			PD.setBindings(that.bindings, PD.desktopKeys);
 		},
 		selectFunction : function() {doNothing()},
 		select : function() {
@@ -300,6 +297,9 @@ function RegionModule(instance) {
 		set: function() {
 			for (var key in arguments[0])
 				that[key] = arguments[0][key];
+		},
+		kill: function() {
+			PD.kill(that);
 		}
 	};
 };
@@ -324,6 +324,7 @@ Terminal.buffer.hydrate();
 // assumes that all windows are created fullscreen.
 function WindowRegionModule() {
 	return WindowRegion = {
+		initChar: '\u2591',
 		width: Terminal.width,
 		height: Terminal.height-2,
 		y: 1
@@ -486,20 +487,11 @@ var EditableTextRegionModule = (function() {
 		? italics=false
 		: italics=true;
 	};
+	// depreciated?
 	var getCursor= function() {
 		if (PD.selected.composition.indexOf(EditableTextRegionModule)!=-1)
 			return PD.selected.subRegion[0];
 		else return 0;
-	};
-	var toggleInsertMode = function () {
-		var cursor=getCursor();
-		insertMode
-		? (function () {
-			cursor.buffer[0]='_';
-			PD.insertMode=false; })() // PD.startTimer()?
-		: (function () {
-			cursor.buffer[0]='\u2588';
-			PD.insertMode=true; })();
 	};
 	var startTimer = (function() {
 		var timer;
@@ -529,6 +521,7 @@ var EditableTextRegionModule = (function() {
 				// Megashite
 				var array = PD.otherTextEditorBindings(that).concat(PD.textEditorAtoZ(that));
 				array.push([83, "ctrl", function(){that.save()}]);
+				array.push([69, "ctrl", function(){that.execute()}]);
 				return array;
 			})(),
 			// might need to use the BoxRegion matrix methods to help going up / down in y.
@@ -568,23 +561,48 @@ var EditableTextRegionModule = (function() {
 					data+=that.encodedBuffer[i][0];
 				window.open('data:text/csv;charset=utf-8,' + encodeURIComponent(data));
 			},
+			execute: function() {
+				var data = "";
+				for (var i=0; i<that.encodedBuffer.length; i++)
+					data+=that.encodedBuffer[i][0];
+				// nice if we had a printText...
+				debugText.printText(eval(data));
+				debug.changed();
+			},
 			toggleCapsLock: (function() {
 				return function() {
-					capsLock
-					? (function() {
+					if (capsLock) {
 						capsLock = false;
-						PD.setBindings(PD.textEditorAtoZ(PD.selected));
-					})()
-					: (function() {
+						PD.setBindings(PD.textEditorAtoZ(PD.selected), PD.desktopKeys);
+					} else {
 						capsLock = true;
-						PD.setBindings(PD.capsLockBindings(PD.selected));
-					})();
+						PD.setBindings(PD.capsLockBindings(PD.selected), PD.desktopKeys);
+					}
 				}
-			})()
+			})(),
+			toggleInsertMode: function () {
+				var cursor=that.subRegion[0];
+				if (insertMode) {
+					cursor.buffer[0]='_';
+					insertMode=false;
+					startTimer();
+					cursor.changed();
+				} else {
+					cursor.buffer[0]='\u2588';
+					insertMode=true;
+					startTimer();
+					cursor.changed();
+				}
+			}
 		};
 		PD.pushRegion( (function () {
 			var cursor = mixin(RegionModule);
-			cursor.set({name: "Cursor", width: 1, height: 1, visible: false});
+			cursor.set({
+				name: "Cursor",
+				width: 1,
+				height: 1,
+				visible: false
+			});
 			cursor.buffer[0]='\u2588';
 			cursor.update=function () {
 				var vector = that.getVector(that.pointer);
@@ -605,6 +623,7 @@ function TextRegionModule(instance) {
 	return TextRegion = {
 		// fuck style for now. But I could work out a way of encoding it like \#FFFFFF or whatever.
 		printText: function(text) {
+			text = text.toString();
 			that.encodedBuffer = [];
 			for (var i=0; i<text.length; i++) {
 				// for fucks sake microsoft
@@ -622,7 +641,8 @@ TextRegionModule.dependencies = [EncodedTextRegionModule];
 
 // Every button has a shortcut. I think the index should be chosen programmatically, and it might be easy. altBuffer should only be seen when the bindings are active.
 // Still doesn't support funky greek letters.
-// This should be an EncodedTextRegion but it can't be because it has a special update, so I could put the text inside the button and leave the button textless. SO COMPLICATED THO
+// This should be an EncodedTextRegion but it can't be because it has a special update, so I could put the text inside the button and leave the button textless.
+// What I want is to be able to go "here's the text and the index, hydrate with it". But I can't even encode stuff from text with encoded text regions yet anyway, it would be a lot easier with token parsing, so I guess it's fine for now. 
 function ButtonRegionModule(instance) {
 	var that = instance;
 	return ButtonRegion = {
@@ -657,12 +677,76 @@ ButtonRegionModule.dependencies = [RegionModule];
 // Woah this is hard.
 function ScrollingRegionModule(instance) {
 	var that = instance;
-	return ScrollingRegion = {
-		overflowX: that.width,
-		overflowY: that.height,
-		scrollBarChar: '\u2588',
-		scrollBackgroundChar: '\u2593'
+	function render(toDraw) {
+		var i=0;
+		for (var y=Math.abs(toDraw.y); y<toDraw.height; y++) {
+			for (var x=Math.abs(toDraw.x); x<toDraw.width; x++) {
+				if (x-Math.abs(toDraw.x)>=that.width) continue;
+				var element = toDraw.buffer[toDraw.getPointer(x, y)];
+				// it should only render what is in the bounds of that.width and that.height. Of course! It never occured to me to think of that as the thing that's moving! lol
+				// Clearly it doesn't start at y=0 and x=0.
+
+				toDraw.composition.indexOf(EncodedTextRegionModule)!=-1
+				? that.buffer[i]=element
+				: that.buffer[i]=element.toSpan(toDraw.colour, toDraw.background);
+				i++;
+			}
+		}
+		toDraw.hasChanged=false;
+	}
+	// Only does x atm
+	function drawRegion(toDraw) {
+		if (toDraw.hasChanged==true) {
+			toDraw.update();
+			// Doesn't care if invisible. Maybe I need another property.
+			render(toDraw);
+		}
 	};
+	var ScrollingRegion = {
+		// You have to make the subRegion invisible (and I guess any sub-subRegions, but I won't get into that yet). This totally doesn't handle non-overflowing subRegions.
+		update: function() {
+			var child = that.subRegion[1];
+			var scrollBar = that.subRegion[0];
+			// i cry evry tiem
+			scrollBar.y = that.height-1;
+			var ratio = that.width/child.width;
+			scrollBar.width = Math.floor(ratio*that.width);
+			scrollBar.hydrate();
+			scrollBar.x=that.width+Math.floor(child.x*ratio)-scrollBar.width;
+			
+			drawRegion(child);
+		},
+		scrollRight: function() {
+			var child = that.subRegion[1];
+			if (child.x<0&&child.x>=that.width-child.width) {
+				child.x++;
+				child.hasChanged=true;
+				that.changed();
+			}
+		},
+		scrollLeft: function() {
+		var child = that.subRegion[1];
+			if (child.x>that.width-child.width&&child.x<=0) {
+				child.x--;
+				child.hasChanged=true;
+				that.changed();
+			}
+		}
+	};
+	ScrollingRegion.bindings = [
+		[100, "normal", function(){that.scrollLeft()}],
+		[102, "normal", function(){that.scrollRight()}]
+	];
+	PD.pushRegion((function() {
+		var scrollBar = mixin(RegionModule);
+		scrollBar.set({
+			initChar: '\u2588',
+			height: 1
+		});
+		scrollBar.hydrate();
+		return scrollBar;
+	})(), that);
+	return ScrollingRegion;
 };
 
 ScrollingRegionModule.dependencies = [RegionModule];
@@ -677,38 +761,139 @@ function crappyTest() {
 	debug.visible = true;
 };
 
+// A lot of this shit should be in PD but cba to scroll to the top all the time and namespaces are fucking gay.
 var PID = 0;
 
+function addProgram(program) {
+	openPrograms.push(program);
+	activeProgram = openPrograms.length-1;
+	PID++;
+};
+
+// Some of this stuff can go in WindowRegion / it's own Module. Rename WindowRegion to ProgramRegion?
 function Alpha() {
 	var alpha = mixin(WindowRegionModule);
+	addProgram(alpha);
 	alpha.set({
-		name: "Alpha"+PID,
-		initChar: '\u2591',
-		icon: '\u00a0'+'\u0391'+'\u00a0'
+		icon: '\u0391',
+		select: function() {
+			alpha.subRegion[0].select();
+			alpha.changed();
+		},
+		bindings: [[115, "normal", function(){alpha.kill()}]],
+		menuItems: [
+			{ 
+				name: "File", 
+				bindings: [],
+				subRegion: []
+			},
+			{
+				name: "Tools",
+				bindings: [],
+				subRegion: []
+			}
+		]
 	});
-	PID++;
-	openPrograms.push(alpha);
-	activeProgram++;
 	PD.pushRegion( (function() {
 		var alphaText = mixin(EditableTextRegionModule);
-		alphaText.set({ name: "AlphaText", width: 24, height: 12, x: 2, y: 1 });
-		alphaText.setBindings();
+		alphaText.set({
+			width: 24,
+			height: 12,
+			x: 2,
+			y: 1
+		});
 		return alphaText;
 	})(), alpha);
 	alpha.setBindings();
 	alpha.hydrate();
 	PD.pushRegion(alpha, Terminal.subRegion[Terminal.activeBuffer]);
-	PD.findAndSelect("AlphaText");
-	Terminal.reDraw();
+	alpha.select();
+	alpha.parent.changed();
 };
 
-var scrollRegionTest = mixin(ScrollingRegionModule);
-scrollRegionTest.set({
-	width: 30,
-	height: 20,
-	x: 3,
-	y: 1
-});
+function Beta() {
+	var beta = mixin(WindowRegionModule);
+	addProgram(beta);
+	beta.set({
+		icon: '\u0392',
+		colour: '#8A8A8A',
+		select: function() {
+			beta.subRegion[0].select();
+			beta.changed();
+		},
+		bindings: [[115, "normal", function(){beta.kill()}]],
+		menuItems: []
+	});
+	PD.pushRegion( (function() {
+		var betaText = mixin(EditableTextRegionModule);
+		betaText.set({
+			name: "BetaText",
+			width: 40,
+			height: 7,
+			x: 2,
+			y: 16
+		});
+		return betaText;
+	})(), beta);
+	PD.pushRegion( (function() {
+		var betaEval = mixin(TextRegionModule);
+		betaEval.set({
+			name: "BetaText",
+			width: 40,
+			height: 12,
+			x: 2,
+			y: 2
+		});
+		return betaEval;
+	})(), beta);
+	beta.setBindings();
+	beta.hydrate();
+	PD.pushRegion(beta, Terminal.subRegion[Terminal.activeBuffer]);
+	beta.select();
+	beta.parent.changed();
+};
+
+function Gamma() {
+	var gamma = mixin(WindowRegionModule);
+	addProgram(gamma);
+	gamma.set({
+		icon: '\u0393',
+		colour: '5B5E00',
+		select: function() {
+			gamma.subRegion[0].select();
+			gamma.changed();
+		},
+		bindings: [[115, "normal", function(){gamma.kill()}]],
+		menuItems: []
+	});
+	PD.pushRegion( (function() {
+		var scrollRegionTest = mixin(ScrollingRegionModule);
+		scrollRegionTest.set({
+			width: 30,
+			height: 20,
+			x: 3,
+			y: 1
+		});
+		scrollRegionTest.hydrate();
+		// add invisible, overflowing subRegions
+		PD.pushRegion( (function() {
+			var overflowing = mixin(TextRegionModule);
+			overflowing.set({
+				width: 48,
+				height: 18,
+				visible: false
+			})
+			overflowing.printText("This is a test of scrolling this text will scroll loads \t\t\t This is wicked mate look how great this is I can't belive I'm actually seeing scrolling text pinch me I'm dreaming. \r\n Get a load of this scrolling text mate, you have no idea how it works do you? \t\tThis text is scrolling an unbeleiberble amount this can't be real. \t\t\t This text is still scrolling omg no way that's one for the history books I'm telling you mate get a load of this scrolling text. I still can't believe how much it's scrolling and that.\r\n Unreal.");
+			return overflowing;
+		})(), scrollRegionTest);
+		return scrollRegionTest;
+	})(), gamma);
+	gamma.setBindings();
+	gamma.hydrate();
+	PD.pushRegion(gamma, Terminal.subRegion[Terminal.activeBuffer]);
+	gamma.select();
+	gamma.parent.changed();
+}
 
 // This is really bad because you should only really put WindowRegions in ScreenRegions. I think. I could enforce this.
 function initLogin() {
@@ -731,8 +916,8 @@ function initLogin() {
 	PD.pushRegion(login, Terminal);
 };
 
-var debugCoordinates = mixin(TextRegionModule);
-debugCoordinates.set({
+var debugText = mixin(TextRegionModule);
+debugText.set({
 	width: 22,
 	height: 1,
 	x: 30,
@@ -744,13 +929,14 @@ var debug = mixin(RegionModule);
 debug.set({
 	update: function() {
 		PD.debugMode
-		? debug.subRegion[0].visible=true
-		: debug.subRegion[0].visible=false;
+		? debugText.visible=true
+		: debugText.visible=false;
 	}
 });
 
-PD.pushRegion(debugCoordinates, debug);
+PD.pushRegion(debugText, debug);
 
+// identical program instances should stack and be selected with a context menu, like in windows. I'm so not doing that.
 var taskBar = mixin(RegionModule);
 taskBar.set({
 	name: "TaskBar",
@@ -772,17 +958,34 @@ taskBar.set({
 				totalWidth += icon.width+1;
 				icon.x = totalWidth;
 			}
-			icon.printText(openPrograms[i].icon);
+			if (i==activeProgram) icon.colour = "red";
+			icon.printText('\u00a0' + openPrograms[i].icon + '\u00a0');
 			// and push the icon to taskBar
 			PD.pushRegion(icon, taskBar);
 		}
 	}
 });
 taskBar.hydrate();
+
+
 var activeProgram = -1;
 
 // When we run any program, we need to give it a unique id. 
 var openPrograms = [];
+
+function cycleProgramRight() {
+	activeProgram++;
+	activeProgram = activeProgram % openPrograms.length;
+	openPrograms[activeProgram].select();
+	taskBar.changed();
+}
+
+function cycleProgramLeft() {
+	activeProgram--;
+	activeProgram = activeProgram % openPrograms.length;
+	openPrograms[activeProgram].select();
+	taskBar.changed();
+}
 
 function initDesktop() {
 	var desktop = mixin(ScreenRegionModule);
@@ -797,7 +1000,9 @@ function initDesktop() {
 
 var programs = [
 	// Why can't I just put a reference to Alpha here? :(
-	{name: "Alpha", action: function(){Alpha()}, binding: 65}
+	{name: "Alpha", action: function(){Alpha()}, binding: 65},
+	{name: "Beta", action: function(){Beta()}, binding: 66},
+	{name: "Gamma", action: function(){Gamma()}, binding: 71}
 ];
 
 // returns array of {name: , bindings:} bindings.
@@ -819,7 +1024,7 @@ function initDesktopMenu() {
 				// M
 				[77, "alt", function(){PD.findAndSelect("MetaButtonContextMenu")}]
 			],
-			subRegions: [
+			subRegion: [
 				createMenu("MetaButtonContext", metaMenuItems, 0, 1)
 			]
 		}
@@ -830,40 +1035,64 @@ function initDesktopMenu() {
 // The active program should add items to this menu.
 function createTopBar(name, menuItems) {
 	var menu = mixin(RegionModule);
-	menu.set({name: name+"TopBar", width: 1, height: 1});
-	var totalWidth=0;
-	for (var i=0; i<menuItems.length; i++) {
-		PD.pushRegion( (function() { 
-			var item= mixin(ButtonRegionModule);
-			item.set({ name: menuItems[i].name, bindings: menuItems[i].bindings});
-			item.hydrate();
-			item.setBindings();
-			if (i!==0) {
-				totalWidth += menuItems[i-1].name.length+1;
-				item.x = totalWidth;
+	menu.set({
+		name: name+"TopBar",
+		width: 1,
+		height: 1,
+		update: function() {
+			// This is pretty slow. only really needs to update if activeProgram has changed, and doesn't need to kill Meta. Hey, maybe I should use hasChanged on openPrograms? :)
+			// get menuItems from openPrograms[activeProgram] and append them to menuItems
+			menu.subRegion = [];
+			var newMenuItems = menuItems.slice();
+			if (activeProgram+1) {
+				var itemsToAppend = openPrograms[activeProgram].menuItems;
+				newMenuItems = newMenuItems.concat(itemsToAppend);
 			}
-			if (menuItems[i].subRegions)
-				for (var j=0; j<menuItems[i].subRegions.length; j++)
-					PD.pushRegion(menuItems[i].subRegions[j], item);
-			return item;
-		})(), menu);
-		menu.width=totalWidth+menuItems[i].name.length+1;
-	}
-	menu.hydrate();
+			var totalWidth=0;
+			for (var i=0; i<newMenuItems.length; i++) {
+				PD.pushRegion( (function() { 
+					var item= mixin(ButtonRegionModule);
+					item.set({
+						name: newMenuItems[i].name,
+						bindings: newMenuItems[i].bindings
+					});
+					item.hydrate();
+					item.setBindings();
+					if (i!==0) {
+						totalWidth += newMenuItems[i-1].name.length+1;
+						item.x = totalWidth;
+					}
+					if (newMenuItems[i].subRegion.length)
+						for (var j=0; j<newMenuItems[i].subRegion.length; j++)
+							PD.pushRegion(newMenuItems[i].subRegion[j], item);
+					return item;
+				})(), menu);
+				menu.width=totalWidth+newMenuItems[i].name.length+1;
+			}
+			menu.hydrate();
+		}
+	});
+	menu.update(); // eek
+	
 	return menu;
 };
 
 // This should really be called a contextual menu. It shares some behaviour with a pop-up message.
 function createMenu(name, menuItems, x, y) { 
 	var menu= mixin(RegionModule);
-	menu.set({name: name+"Menu", x: x, y: y});
+	menu.set({
+		name: name+"Menu",
+		x: x,
+		y: y,
+		bindings: [[27, "normal", function(){PD.escape()}]]
+	});
 	var width=0;
 	for (var i=0; i<menuItems.length; i++) {
+		menu.bindings = menu.bindings.concat(menuItems[i].bindings);
 		PD.pushRegion( (function() {
 			var item= mixin(ButtonRegionModule);
-			item.set({ name: menuItems[i].name, bindings: menuItems[i].bindings, y: i});
+			item.set({ name: menuItems[i].name, y: i});
 			item.hydrate();
-			item.setTemporaryBindings();
 			if (item.width>width) width=item.width;
 			return item;
 		})(), menu);
@@ -872,9 +1101,13 @@ function createMenu(name, menuItems, x, y) {
 		width: width,
 		height: menuItems.length,
 		update: function() {
-			PD.selected===menu
-			? (function() {menu.visible=true; activeKeyBuffer=altKeys;})()
-			: (function() {menu.visible=false; activeKeyBuffer=keys;})();
+			if (PD.selected===menu) {
+				menu.visible=true;
+				PD.activeKeySet=PD.createKeySet(menu.bindings);
+			} else {
+				menu.visible=false;
+				PD.activeKeySet=PD.composedKeySet;
+			}
 		},
 		selectFunction: function() {
 			if (PD.selected!==menu)	menu.previouslySelected = PD.selected;
@@ -898,7 +1131,7 @@ function testBindings() {
 		// can't have more than one instance
 		// Also this kills the menu item atm
 		// [115, "normal", function(){PD.kill("Alpha")}],
-		[115, "normal", function(){PD.killActiveProgram()}],
+		// [115, "normal", function(){PD.killActiveProgram()}],
 		
 		// F5
 		[116, "preventDefault", false],
@@ -909,15 +1142,17 @@ function testBindings() {
 		// F12
 		[123, "preventDefault", false],
 		
-		// Escape
-		[27, "normal", function(){PD.escape()}],
-		
 		// Alt
-		// alt is alt.
 		[18, "alt", function(){Terminal.toggleAltMode()}],
 		
 		// F6
-		[117, "normal", function(){PD.toggleDebugMode()}]
+		[117, "normal", function(){PD.toggleDebugMode()}],
+		
+		// Right
+		[39, "altCtrl", function(){cycleProgramRight()}],
+		
+		// Left
+		[37, "altCtrl", function(){cycleProgramLeft()}]
 	];
 	Terminal.setBindings();
 };

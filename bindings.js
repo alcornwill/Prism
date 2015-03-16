@@ -1,10 +1,16 @@
+// I think I might end up with a million of these but this is first iteration.
 
-var keys = [];
-var altKeys = [];
+PD.unBoundKeys = [];
+PD.terminalKeys = [];
+PD.desktopKeys = [];
 
-var activeKeyBuffer = keys;
+// composed keySet gets updated every time we setBindings.
+// it is made of terminalKeys and desktopKeys.
+PD.composedKeySet = [];
 
-function key() {
+PD.activeKeySet = [];
+
+PD.key = function() {
 	this.normal = function(){doNothing()};
 	this.shift = function(){doNothing()};
 	this.alt = function(){doNothing()};
@@ -13,98 +19,104 @@ function key() {
 	this.shiftCtrl = function(){doNothing()};
 	this.altCtrl = function(){doNothing()};
 	this.shiftAltCtrl = function(){doNothing()};
-	this.preventDefault = true
+	this.preventDefault = true;
+	this.unBound = true;
 };
 
 PD.initKeys = function() {
+	var unBoundKey = new PD.key();
 	for (var i=0; i<=222; i++)
-	{
-		keys[i] = new key();
-		altKeys[i] = new key();
+		PD.unBoundKeys[i] = unBoundKey;
+	// This is shit but don't want activeKeySet to loose reference to composedKey
+	for (var i=0; i<=222; i++)
+		PD.composedKeySet[i] = unBoundKey;
+	PD.terminalKeys = PD.createKeySet([]);
+	PD.desktopKeys = PD.createKeySet([]);
+	PD.activeKeySet = PD.composedKeySet;
+};
+
+PD.createKeySet = function(bindings) {
+	// set all default keys to the unbound key object.
+	var keySet = PD.unBoundKeys.slice();	
+	for (var i=0; i<bindings.length; i++) {
+		var binding = bindings[i];
+		keySet[binding[0]] = {};
+		PD.setBinding(binding, keySet);
 	}
+	// copy over terminal key set
+	for (var i=0; i<PD.terminalKeys.length; i++)
+		if (!PD.terminalKeys[i].unBound)
+			keySet[i] = PD.terminalKeys[i];
+	
+	return keySet;
 };
 
-PD.setTemporaryBindings = function(bindings) {
+PD.setBindings = function(bindings, keySet) {
 	for (var i=0; i<bindings.length; i++)
-		PD.setTemporaryBinding(bindings[i]);
+		PD.setBinding(bindings[i], keySet);
 };
 
-PD.setBindings= function(bindings) {
-	for (var i=0; i<bindings.length; i++)
-		PD.setBinding(bindings[i]);
-};
-
-PD.setTemporaryBinding = function(binding) {
-	var key = binding[0];
+PD.setBinding = function(binding, keySet) {
+	var keyCode = binding[0];
 	var modifier = binding[1];
 	var action = binding[2];
 	
-	switch(modifier) {
-		case "normal":
-			altKeys[key].normal = action;
-			break;
-		case "shift":
-			altKeys[key].shift = action;
-			break;
-		case "alt":
-			altKeys[key].alt = action;
-			break;
-		case "ctrl":
-			altKeys[key].ctrl = action;
-			break;
-		case "shiftAlt":
-			altKeys[key].shiftAlt = action;
-			break;
-		case "shiftCtrl":
-			altKeys[key].shiftCtrl = action;
-			break;
-		case "altCtrl":
-			altKeys[key].altCtrl = action;
-			break;
-		case "shiftAltCtrl":
-			altKeys[key].shiftAltCtrl = action;
-			break;
-		case "preventDefault":
-			altKeys[key].preventDefault = action;
-			break;
-	}
-};
+	// might do instanceOf unBoundKey instead
+	// not right because should be if terminalKeys.modifier is not doNothing
+	// I suppose if we put doNothing in a new object...
 
-PD.setBinding = function(binding) {
-	var key = binding[0];
-	var modifier = binding[1];
-	var action = binding[2];
+	var newKey = new PD.key();
+	keySet[keyCode].unBound
+	? newKey.unBound = false
+	// not a new key at all
+	: newKey = keySet[keyCode];
 	
 	switch(modifier) {
 		case "normal":
-			keys[key].normal = action;
+			newKey.normal = action;
 			break;
 		case "shift":
-			keys[key].shift = action;
+			newKey.shift = action;
 			break;
 		case "alt":
-			keys[key].alt = action;
+			newKey.alt = action;
 			break;
 		case "ctrl":
-			keys[key].ctrl = action;
+			newKey.ctrl = action;
 			break;
 		case "shiftAlt":
-			keys[key].shiftAlt = action;
+			newKey.shiftAlt = action;
 			break;
 		case "shiftCtrl":
-			keys[key].shiftCtrl = action;
+			newKey.shiftCtrl = action;
 			break;
 		case "altCtrl":
-			keys[key].altCtrl = action;
+			newKey.altCtrl = action;
 			break;
 		case "shiftAltCtrl":
-			keys[key].shiftAltCtrl = action;
+			newKey.shiftAltCtrl = action;
 			break;
 		case "preventDefault":
-			keys[key].preventDefault = action;
+			newKey.preventDefault = action;
 			break;
 	}
+	
+	// equals itself why
+	keySet[keyCode] = newKey;
+	
+	// Do we need to do this here?
+	PD.updateComposedKeySet();
 };
+
+PD.updateComposedKeySet = function() {
+	// write desktop, then overwrite with terminal?
+	for (var i=0; i<PD.desktopKeys.length; i++)
+		if (!PD.desktopKeys[i].unBound)
+			PD.composedKeySet[i] = PD.desktopKeys[i];
+	for (var i=0; i<PD.terminalKeys.length; i++)
+		if (!PD.terminalKeys[i].unBound)
+			PD.composedKeySet[i] = PD.terminalKeys[i];
+}
 
 PD.otherTextEditorBindings = function(that) {
 	return [
@@ -151,7 +163,7 @@ PD.otherTextEditorBindings = function(that) {
 		[40, "normal", function(){that.cursorDown()}],
 		
 		// Insert
-		[45, "normal", function(){toggleInsertMode()}],
+		[45, "normal", function(){that.toggleInsertMode()}],
 
 		// Delete
 		[46, "normal", function(){that.deleteKey()}],
@@ -525,174 +537,61 @@ function greek() {
 	];
 };
 
-resetTextBindings = function() {
-	return [
-		[8, "normal", function(){doNothing()}],
-		[8, "shift", function(){doNothing()}],
-		[9, "normal", function(){doNothing()}],
-		[13, "normal", function(){doNothing()}],
-		[13, "shift", function(){doNothing()}],
-		[32, "normal", function(){doNothing()}],
-		[32, "shift", function(){doNothing()}],
-		[33, "normal", function(){doNothing()}],
-		[34, "normal", function(){doNothing()}],
-		[35, "normal", function(){doNothing()}],
-		[36, "normal", function(){doNothing()}],
-		[37, "normal", function(){doNothing()}],
-		[38, "normal", function(){doNothing()}],
-		[39, "normal", function(){doNothing()}],
-		[40, "normal", function(){doNothing()}],
-		[48, "normal", function(){doNothing()}],
-		[48, "shift", function(){doNothing()}],
-		[49, "normal", function(){doNothing()}],
-		[49, "shift", function(){doNothing()}],
-		[50, "normal", function(){doNothing()}],
-		[50, "shift", function(){doNothing()}],
-		[51, "normal", function(){doNothing()}],
-		[51, "shift", function(){doNothing()}],
-		[52, "normal", function(){doNothing()}],
-		[52, "shift", function(){doNothing()}],
-		[53, "normal", function(){doNothing()}],
-		[53, "shift", function(){doNothing()}],
-		[54, "normal", function(){doNothing()}],
-		[54, "shift", function(){doNothing()}],
-		[55, "normal", function(){doNothing()}],
-		[55, "shift", function(){doNothing()}],
-		[56, "normal", function(){doNothing()}],
-		[56, "shift", function(){doNothing()}],
-		[57, "normal", function(){doNothing()}],
-		[57, "shift", function(){doNothing()}],
-		[65, "normal", function(){doNothing()}],
-		[65, "shift", function(){doNothing()}],
-		[66, "normal", function(){doNothing()}],
-		[66, "shift", function(){doNothing()}],
-		[67, "normal", function(){doNothing()}],
-		[67, "shift", function(){doNothing()}],
-		[68, "normal", function(){doNothing()}],
-		[68, "shift", function(){doNothing()}],
-		[69, "normal", function(){doNothing()}],
-		[69, "shift", function(){doNothing()}],
-		[70, "normal", function(){doNothing()}],
-		[70, "shift", function(){doNothing()}],
-		[71, "normal", function(){doNothing()}],
-		[71, "shift", function(){doNothing()}],
-		[72, "normal", function(){doNothing()}],
-		[72, "shift", function(){doNothing()}],
-		[73, "normal", function(){doNothing()}],
-		[73, "shift", function(){doNothing()}],
-		[74, "normal", function(){doNothing()}],
-		[74, "shift", function(){doNothing()}],
-		[75, "normal", function(){doNothing()}],
-		[75, "shift", function(){doNothing()}],
-		[76, "normal", function(){doNothing()}],
-		[76, "shift", function(){doNothing()}],
-		[77, "normal", function(){doNothing()}],
-		[77, "shift", function(){doNothing()}],
-		[78, "normal", function(){doNothing()}],
-		[78, "shift", function(){doNothing()}],
-		[79, "normal", function(){doNothing()}],
-		[79, "shift", function(){doNothing()}],
-		[80, "normal", function(){doNothing()}],
-		[80, "shift", function(){doNothing()}],
-		[81, "normal", function(){doNothing()}],
-		[81, "shift", function(){doNothing()}],
-		[82, "normal", function(){doNothing()}],
-		[82, "shift", function(){doNothing()}],
-		[83, "normal", function(){doNothing()}],
-		[83, "shift", function(){doNothing()}],
-		[84, "normal", function(){doNothing()}],
-		[84, "shift", function(){doNothing()}],
-		[85, "normal", function(){doNothing()}],
-		[85, "shift", function(){doNothing()}],
-		[86, "normal", function(){doNothing()}],
-		[86, "shift", function(){doNothing()}],
-		[87, "normal", function(){doNothing()}],
-		[87, "shift", function(){doNothing()}],
-		[88, "normal", function(){doNothing()}],
-		[88, "shift", function(){doNothing()}],
-		[89, "normal", function(){doNothing()}],
-		[89, "shift", function(){doNothing()}],
-		[90, "normal", function(){doNothing()}],
-		[90, "shift", function(){doNothing()}],
-		[186, "normal", function(){doNothing()}],
-		[186, "shift", function(){doNothing()}],
-		[187, "normal", function(){doNothing()}],
-		[187, "shift", function(){doNothing()}],
-		[188, "normal", function(){doNothing()}],
-		[188, "shift", function(){doNothing()}],
-		[189, "normal", function(){doNothing()}],
-		[189, "shift", function(){doNothing()}],
-		[190, "normal", function(){doNothing()}],
-		[190, "shift", function(){doNothing()}],
-		[191, "normal", function(){doNothing()}],
-		[191, "shift", function(){doNothing()}],
-		[192, "normal", function(){doNothing()}],
-		[192, "shift", function(){doNothing()}],
-		[219, "normal", function(){doNothing()}],
-		[219, "shift", function(){doNothing()}],
-		[220, "normal", function(){doNothing()}],
-		[220, "shift", function(){doNothing()}],
-		[221, "normal", function(){doNothing()}],
-		[221, "shift", function(){doNothing()}],
-		[222, "normal", function(){doNothing()}],
-		[222, "shift", function(){doNothing()}]
-	];
-};
-
 window.onkeydown = checkKey;
 
 window.onkeyup = checkEm;
 
 // document.onmousemove = getMouseXY;
 
-function getMouseXY(e) {
-	var x = e.clientX;
-	var y = e.clientY;
-	debug.subRegion[0].printText("Coordinates: (" + x + "," + y + ")");
-	debug.changed();
-};
+// function getMouseXY(e) {
+	// var x = e.clientX;
+	// var y = e.clientY;
+	// debugText.printText("Coordinates: (" + x + "," + y + ")");
+	// debug.changed();
+// };
 
+// I think it slows everything down if you hold down a key. not sure what I can do about that...
 function checkKey(e) {
-	if (activeKeyBuffer[e.keyCode].preventDefault)
+	if (PD.activeKeySet[e.keyCode].preventDefault)
 	{
 		e.preventDefault();
 	}
 	if (e.shiftKey && e.altKey && e.ctrlKey)
 	{
-		activeKeyBuffer[e.keyCode].shiftAltCtrl();
+		PD.activeKeySet[e.keyCode].shiftAltCtrl();
 		return;
 	}
 	if (e.shiftKey && e.altKey)
 	{
-		activeKeyBuffer[e.keyCode].shiftAlt();
+		PD.activeKeySet[e.keyCode].shiftAlt();
 		return;
 	}
 	if (e.shiftKey && e.ctrlKey)
 	{
-		activeKeyBuffer[e.keyCode].shiftCtrl();
+		PD.activeKeySet[e.keyCode].shiftCtrl();
 		return;
 	}
 	if (e.altKey && e.ctrlKey)
 	{
-		activeKeyBuffer[e.keyCode].altCtrl();
+		PD.activeKeySet[e.keyCode].altCtrl();
 		return;
 	}
 	if (e.shiftKey)
 	{
-		activeKeyBuffer[e.keyCode].shift();
+		PD.activeKeySet[e.keyCode].shift();
 		return;
 	}
 	if (e.altKey)
 	{
-		activeKeyBuffer[e.keyCode].alt();
+		PD.activeKeySet[e.keyCode].alt();
 		return;
 	}
 	if (e.ctrlKey)
 	{
-		activeKeyBuffer[e.keyCode].ctrl();
+		PD.activeKeySet[e.keyCode].ctrl();
 		return;
 	}
-	activeKeyBuffer[e.keyCode].normal();
+	PD.activeKeySet[e.keyCode].normal();
 	return;
 };
 
