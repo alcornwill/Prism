@@ -11,6 +11,8 @@
 
 function doNothing() {};
 
+var debug = {};
+
 // I am in shock and denial about how well this works.
 // You still can't have private static methods that access instance properties but it doesn't matter because you can have private instance methods that access instance properties and static properties.
 // Not sure how mixins effect performance but I don't think it's harmful. It's probably less harmful that using prototypes.
@@ -133,15 +135,23 @@ var PD = (function() {
 				// hasOwnProperty? Really?
 		},
 		toggleDebugMode: function() {
-			PD.debugMode
-			? PD.debugMode = false
-			: PD.debugMode = true;
-			Terminal.reDraw();
+			if (PD.debugMode) {
+				PD.debugMode = false;
+				debug.style.visibility = "hidden";
+			} else {
+				PD.debugMode = true;
+				debug.style.visibility = "visible";
+			}
 		}
 	}
 })();
 
 // This stuff should all be in the PD namespace but I cba
+
+var charRatio = {x: 9.5, y: 18.5};
+var terminalOffset = {x: 0, y: 0};
+
+var framerate = 32;  // fixed 30fps
 
 // One day this will inherit from ScreenRegion, but there's some cirular dependency shit going on and I don't give a fuck right now. I guess some modules are like child modules of Terminal. On the whole, ScreenRegions and WindowRegions are pretty stupid now so I might kill them.
 function TerminalModule(instance) {
@@ -149,8 +159,12 @@ function TerminalModule(instance) {
 	
 	var lines=[];
 	var container={};
-	var pxWidth= 500;
-	var pxHeight= 500;
+	var pxWidth= 498;
+	var pxHeight= 496;
+	function updateOffset(x, y) {
+		terminalOffset.x = Math.round(x/charRatio.x)+1;
+		terminalOffset.y = Math.round(y/charRatio.y);
+	}
 	return Terminal= {
 		name: "Terminal",
 		subRegion: [],
@@ -158,8 +172,9 @@ function TerminalModule(instance) {
 		hasChanged: true,
 		bindings: [],
 	
-		width: Math.floor(pxWidth/9.5),
-		height: Math.floor(pxHeight/18.5),
+		// should be pxWidth/xxx instead of 500 and then round the actual div dimentions to be multiples of these constants.
+		width: Math.floor(500/charRatio.x),
+		height: Math.floor(500/charRatio.y),
 		setBindings: function() {
 			PD.setBindings(that.bindings, PD.terminalKeys);
 		},
@@ -173,8 +188,11 @@ function TerminalModule(instance) {
 			var h=window.innerHeight;
 			container.style.width=pxWidth;
 			container.style.height=pxHeight;
-			container.style.top=((h/2)-(pxHeight/2))+"px";
-			container.style.left=((w/2)-(pxWidth/2))+"px";
+			var offsetY = (h/2)-(pxHeight/2);
+			var offsetX = (w/2)-(pxWidth/2);
+			container.style.top= offsetY+"px";
+			container.style.left= offsetX+"px";
+			updateOffset(offsetX, offsetY);
 		},
 		init: (function() {
 			function constructDivs() {
@@ -191,7 +209,8 @@ function TerminalModule(instance) {
 				constructDivs();
 				PD.initKeys();
 				crappyTest();
-				setInterval(that.update, 32); // fixed 30fps
+				debug = document.getElementById("debug");
+				setInterval(that.update, framerate);
 			};
 		})(),
 		update: (function() {
@@ -465,6 +484,8 @@ var EncodedTextRegionModule = (function() {
 EncodedTextRegionModule.dependencies = [RegionModule];
 
 var EditableTextRegionModule = (function() {
+	var mouseIsDown = false;
+	var timeout = false;
 	var insertMode=true;
 	var capsLock=false;
 	var colourMode= '#1D5FA1';
@@ -514,9 +535,22 @@ var EditableTextRegionModule = (function() {
 	function encode(symbol) {
 		return [symbol, colourMode, background, underlined, bold, italics];
 	};
+	function innerGetOffset(item) {
+		if (item.name=="Terminal") return {x: terminalOffset.x, y: terminalOffset.y};
+		var vector = innerGetOffset(item.parent);
+		vector.x += item.x;
+		vector.y += item.y;
+		return vector;
+	};
 	return Module = function(instance) {
 		var that = instance;
+		var highlightPointer = 0;
 		var EditableTextRegion = {
+			cursorAt: function (x, y) {
+				// Kinda confusing that it's called getPointer. It's just the opposite of getVector. getIndex?
+				// obviously retard
+				that.encodedPointer=that.getPointer(x, y);
+			},
 			bindings: (function() {
 				// Megashite
 				var array = PD.otherTextEditorBindings(that).concat(PD.textEditorAtoZ(that));
@@ -566,8 +600,7 @@ var EditableTextRegionModule = (function() {
 				for (var i=0; i<that.encodedBuffer.length; i++)
 					data+=that.encodedBuffer[i][0];
 				// nice if we had a printText...
-				debugText.printText(eval(data));
-				debug.changed();
+				debug.innerHTML = eval(data);
 			},
 			toggleCapsLock: (function() {
 				return function() {
@@ -593,6 +626,30 @@ var EditableTextRegionModule = (function() {
 					startTimer();
 					cursor.changed();
 				}
+			},
+			mouseDown: function(e) {
+				mouseIsDown = true;
+				that.mouseClick(e);
+			},
+			mouseClick: function(e) {
+				if (timeout) return;
+				if (mouseIsDown) {
+					var x = Math.round(e.clientX/charRatio.x);
+					var y = Math.round(e.clientY/charRatio.y);
+					debug.innerHTML = "Coordinates: (" + x + "," + y + ")";
+					var vector = innerGetOffset(that);
+					x-=vector.x;
+					y-=vector.y;
+					debug.innerHTML += "<br>Coordinates: (" + x + "," + y + ")";
+					that.cursorAt(x, y);
+					startTimer();
+					that.changed();
+					timeout = true;
+					setInterval(function(){timeout=false}, framerate);
+				}
+			},
+			mouseUp: function(e) {
+				mouseIsDown = false;
 			}
 		};
 		PD.pushRegion( (function () {
@@ -674,17 +731,15 @@ function ButtonRegionModule(instance) {
 
 ButtonRegionModule.dependencies = [RegionModule];
 
-// Woah this is hard.
 function ScrollingRegionModule(instance) {
 	var that = instance;
 	function render(toDraw) {
 		var i=0;
 		for (var y=Math.abs(toDraw.y); y<toDraw.height; y++) {
 			for (var x=Math.abs(toDraw.x); x<toDraw.width; x++) {
-				if (x-Math.abs(toDraw.x)>=that.width) continue;
+				if (x-Math.abs(toDraw.x)>=that.width||y-Math.abs(toDraw.y)>=that.height) continue;
 				var element = toDraw.buffer[toDraw.getPointer(x, y)];
 				// it should only render what is in the bounds of that.width and that.height. Of course! It never occured to me to think of that as the thing that's moving! lol
-				// Clearly it doesn't start at y=0 and x=0.
 
 				toDraw.composition.indexOf(EncodedTextRegionModule)!=-1
 				? that.buffer[i]=element
@@ -705,47 +760,61 @@ function ScrollingRegionModule(instance) {
 	var ScrollingRegion = {
 		// You have to make the subRegion invisible (and I guess any sub-subRegions, but I won't get into that yet). This totally doesn't handle non-overflowing subRegions.
 		update: function() {
-			var child = that.subRegion[1];
-			var scrollBar = that.subRegion[0];
-			// i cry evry tiem
-			scrollBar.y = that.height-1;
+			var child = that.subRegion[2];
+			var scrollBarX = that.subRegion[0].subRegion[0];
+			var scrollBarY = that.subRegion[1].subRegion[0];
+
 			var ratio = that.width/child.width;
-			scrollBar.width = Math.floor(ratio*that.width);
-			scrollBar.hydrate();
-			scrollBar.x=that.width+Math.floor(child.x*ratio)-scrollBar.width;
+			scrollBarX.width = Math.round(ratio*that.width-1);
+			scrollBarX.hydrate();
+			scrollBarX.x=Math.abs(Math.round(child.x*ratio));
+			
+			ratio = that.height/child.height;
+			scrollBarY.height = Math.round(ratio*that.height-1);
+			scrollBarY.hydrate();
+			scrollBarY.y=Math.abs(Math.round(child.y*ratio));
 			
 			drawRegion(child);
 		},
-		scrollRight: function() {
-			var child = that.subRegion[1];
+		scrollLeft: function() {
+			var child = that.subRegion[2];
 			if (child.x<0&&child.x>=that.width-child.width) {
 				child.x++;
 				child.hasChanged=true;
 				that.changed();
 			}
 		},
-		scrollLeft: function() {
-		var child = that.subRegion[1];
+		scrollRight: function() {
+		var child = that.subRegion[2];
 			if (child.x>that.width-child.width&&child.x<=0) {
 				child.x--;
+				child.hasChanged=true;
+				that.changed();
+			}
+		},
+		scrollUp: function() {
+		var child = that.subRegion[2];
+			if (child.y<0&&child.y>=that.height-child.height) {
+				child.y++;
+				child.hasChanged=true;
+				that.changed();
+			}
+		},
+		scrollDown: function() {
+		var child = that.subRegion[2];
+			if (child.y>that.height-child.height&&child.y<=0) {
+				child.y--;
 				child.hasChanged=true;
 				that.changed();
 			}
 		}
 	};
 	ScrollingRegion.bindings = [
+		[98, "normal", function(){that.scrollDown()}],
 		[100, "normal", function(){that.scrollLeft()}],
-		[102, "normal", function(){that.scrollRight()}]
+		[102, "normal", function(){that.scrollRight()}],
+		[104, "normal", function(){that.scrollUp()}]
 	];
-	PD.pushRegion((function() {
-		var scrollBar = mixin(RegionModule);
-		scrollBar.set({
-			initChar: '\u2588',
-			height: 1
-		});
-		scrollBar.hydrate();
-		return scrollBar;
-	})(), that);
 	return ScrollingRegion;
 };
 
@@ -758,22 +827,25 @@ function crappyTest() {
 	initLogin();
 	initDesktop();
 	testBindings();
-	debug.visible = true;
 };
 
 // A lot of this shit should be in PD but cba to scroll to the top all the time and namespaces are fucking gay.
 var PID = 0;
 
-function addProgram(program) {
+function runProgram(program) {
 	openPrograms.push(program);
 	activeProgram = openPrograms.length-1;
 	PID++;
+	program.setBindings();
+	program.hydrate();
+	PD.pushRegion(program, Terminal.subRegion[Terminal.activeBuffer]);
+	program.select();
+	program.parent.changed();
 };
 
 // Some of this stuff can go in WindowRegion / it's own Module. Rename WindowRegion to ProgramRegion?
 function Alpha() {
 	var alpha = mixin(WindowRegionModule);
-	addProgram(alpha);
 	alpha.set({
 		icon: '\u0391',
 		select: function() {
@@ -797,23 +869,19 @@ function Alpha() {
 	PD.pushRegion( (function() {
 		var alphaText = mixin(EditableTextRegionModule);
 		alphaText.set({
-			width: 24,
-			height: 12,
+			width: 47,
+			height: 23,
 			x: 2,
 			y: 1
 		});
+		setMouseBinding(alphaText);
 		return alphaText;
 	})(), alpha);
-	alpha.setBindings();
-	alpha.hydrate();
-	PD.pushRegion(alpha, Terminal.subRegion[Terminal.activeBuffer]);
-	alpha.select();
-	alpha.parent.changed();
+	runProgram(alpha);
 };
 
 function Beta() {
 	var beta = mixin(WindowRegionModule);
-	addProgram(beta);
 	beta.set({
 		icon: '\u0392',
 		colour: '#8A8A8A',
@@ -846,16 +914,11 @@ function Beta() {
 		});
 		return betaEval;
 	})(), beta);
-	beta.setBindings();
-	beta.hydrate();
-	PD.pushRegion(beta, Terminal.subRegion[Terminal.activeBuffer]);
-	beta.select();
-	beta.parent.changed();
+	runProgram(beta);
 };
 
 function Gamma() {
 	var gamma = mixin(WindowRegionModule);
-	addProgram(gamma);
 	gamma.set({
 		icon: '\u0393',
 		colour: '5B5E00',
@@ -870,11 +933,50 @@ function Gamma() {
 		var scrollRegionTest = mixin(ScrollingRegionModule);
 		scrollRegionTest.set({
 			width: 30,
-			height: 20,
+			height:10,
 			x: 3,
 			y: 1
 		});
 		scrollRegionTest.hydrate();
+		// These are required by ScrollingRegion... no way to enforce or abstract.
+		PD.pushRegion((function() {
+			var scrollBarXBackground = mixin(RegionModule);
+			scrollBarXBackground.set({
+				width: scrollRegionTest.width,
+				height: 1,
+				y: scrollRegionTest.height-1
+			});
+			scrollBarXBackground.hydrate();
+			PD.pushRegion((function() {
+				var scrollBarX = mixin(RegionModule);
+				scrollBarX.set({
+					initChar: '\u2588',
+					height: 1,
+				});
+				scrollBarX.hydrate();
+				return scrollBarX;
+			})(), scrollBarXBackground);
+			return scrollBarXBackground;
+		})(), scrollRegionTest);
+		PD.pushRegion((function() {
+			var scrollBarYBackground = mixin(RegionModule);
+			scrollBarYBackground.set({
+				width: 1,
+				height: scrollRegionTest.height,
+				x: scrollRegionTest.width-1
+			});
+			scrollBarYBackground.hydrate();
+			PD.pushRegion((function() {
+				var scrollBarY = mixin(RegionModule);
+				scrollBarY.set({
+					initChar: '\u2588',
+					width: 1,
+				});
+				scrollBarY.hydrate();
+				return scrollBarY;
+			})(), scrollBarYBackground);
+			return scrollBarYBackground;
+		})(), scrollRegionTest);
 		// add invisible, overflowing subRegions
 		PD.pushRegion( (function() {
 			var overflowing = mixin(TextRegionModule);
@@ -888,11 +990,7 @@ function Gamma() {
 		})(), scrollRegionTest);
 		return scrollRegionTest;
 	})(), gamma);
-	gamma.setBindings();
-	gamma.hydrate();
-	PD.pushRegion(gamma, Terminal.subRegion[Terminal.activeBuffer]);
-	gamma.select();
-	gamma.parent.changed();
+	runProgram(gamma);
 }
 
 // This is really bad because you should only really put WindowRegions in ScreenRegions. I think. I could enforce this.
@@ -902,90 +1000,30 @@ function initLogin() {
 	login.hydrate();
 	PD.pushRegion( (function() {
 		var welcomeBox = mixin(BoxRegionModule);
-		welcomeBox.set({ name: "WelcomeBox", width: 20, height: 7, x: 16, y: 7 });
+		welcomeBox.set({width: 17, height: 5, x: 18, y: 2 });
 		welcomeBox.hydrate();
 		welcomeBox.decorate();
-		welcomeBox.subRegion.push( (function() {
+		PD.pushRegion( (function() {
 			var welcome = mixin(TextRegionModule);
-			welcome.set({ name: "Welcome", width: 15, height: 3, x: 2, y: 2 });
-			welcome.printText("\tWelcome\r\n  to PunchDeck\r\n---------------");
+			welcome.set({width: 12, height: 1, x: 1, y: 2 });
+			welcome.printText("\tWelcome");
 			return welcome;
-		})());
+		})(), welcomeBox);
 		return welcomeBox;
+	})(), login);
+	PD.pushRegion( (function() {
+		var help = mixin(TextRegionModule);
+		help.set({width: 42, height: 16, x: 5, y: 9 });
+		help.printText("Help:\r\n\r\nF1 & F2 to switch buffers.\r\n\r\nYou can run programs from the Meta menu.\r\nTo select a menu item press:\r\nAlt + (underlined letter)\r\n\r\nTo switch program, press:\r\nAlt + Ctrl + (Left or Right cursor)\r\n\r\nTo scroll in Gamma use the Num Pad.");
+		return help;
 	})(), login);
 	PD.pushRegion(login, Terminal);
 };
-
-var debugText = mixin(TextRegionModule);
-debugText.set({
-	width: 22,
-	height: 1,
-	x: 30,
-	visible: false,
-	colour: "black"
-});
-
-var debug = mixin(RegionModule);
-debug.set({
-	update: function() {
-		PD.debugMode
-		? debugText.visible=true
-		: debugText.visible=false;
-	}
-});
-
-PD.pushRegion(debugText, debug);
-
-// identical program instances should stack and be selected with a context menu, like in windows. I'm so not doing that.
-var taskBar = mixin(RegionModule);
-taskBar.set({
-	name: "TaskBar",
-	width: Terminal.width,
-	height: 1,
-	y: Terminal.height-1,
-	initChar: '\u2588',
-	update: function() {
-		// remove all buttons
-		taskBar.subRegion = [];
-		var totalWidth=0;
-		// for each open program
-		for (var i=0; i<openPrograms.length; i++) {
-			// create a icon (in a similar way to top bar)
-			var icon = mixin(TextRegionModule);
-			icon.width = 3;
-			icon.height = 1;
-			if (i!==0) {
-				totalWidth += icon.width+1;
-				icon.x = totalWidth;
-			}
-			if (i==activeProgram) icon.colour = "red";
-			icon.printText('\u00a0' + openPrograms[i].icon + '\u00a0');
-			// and push the icon to taskBar
-			PD.pushRegion(icon, taskBar);
-		}
-	}
-});
-taskBar.hydrate();
-
 
 var activeProgram = -1;
 
 // When we run any program, we need to give it a unique id. 
 var openPrograms = [];
-
-function cycleProgramRight() {
-	activeProgram++;
-	activeProgram = activeProgram % openPrograms.length;
-	openPrograms[activeProgram].select();
-	taskBar.changed();
-}
-
-function cycleProgramLeft() {
-	activeProgram--;
-	activeProgram = activeProgram % openPrograms.length;
-	openPrograms[activeProgram].select();
-	taskBar.changed();
-}
 
 function initDesktop() {
 	var desktop = mixin(ScreenRegionModule);
@@ -993,8 +1031,7 @@ function initDesktop() {
 	desktop.hydrate();
 	PD.pushRegion(initDesktopMenu(), desktop);
 	PD.pushRegion(desktop, Terminal);
-	PD.pushRegion(debug, desktop);
-	PD.pushRegion(taskBar, desktop);
+	PD.pushRegion(createTaskBar(), desktop);
 	desktop.select();
 };
 
@@ -1011,7 +1048,7 @@ function createMetaMenuItems() {
 	for (var i=0; i<programs.length; i++)
 		menuItems[i] = {
 			name: programs[i].name,
-			bindings: [[programs[i].binding, "normal", programs[i].action]]
+			bindings: [[programs[i].binding, "alt", programs[i].action]]
 		};
 	return menuItems;
 };
@@ -1030,6 +1067,57 @@ function initDesktopMenu() {
 		}
 	];
 	return createTopBar("Desktop", menuItems);
+};
+
+function createTaskBar() {
+// identical program instances should stack and be selected with a context menu, like in windows. I'm so not doing that.
+	var taskBar = mixin(RegionModule);
+	taskBar.set({
+		name: "TaskBar",
+		width: Terminal.width,
+		height: 1,
+		y: Terminal.height-1,
+		initChar: '\u2588',
+		update: function() {
+			// remove all buttons
+			taskBar.subRegion = [];
+			var totalWidth=0;
+			// for each open program
+			for (var i=0; i<openPrograms.length; i++) {
+				// create a icon (in a similar way to top bar)
+				var icon = mixin(TextRegionModule);
+				icon.width = 3;
+				icon.height = 1;
+				if (i!==0) {
+					totalWidth += icon.width+1;
+					icon.x = totalWidth;
+				}
+				if (i==activeProgram) icon.colour = "red";
+				icon.printText('\u00a0' + openPrograms[i].icon + '\u00a0');
+				// and push the icon to taskBar
+				PD.pushRegion(icon, taskBar);
+			}
+		},
+		bindings: [
+			[39, "altCtrl", function(){taskBar.cycleProgramRight()}],
+			[37, "altCtrl", function(){taskBar.cycleProgramLeft()}]
+		],
+		cycleProgramRight: function(){
+			activeProgram++;
+			activeProgram = activeProgram % openPrograms.length;
+			openPrograms[activeProgram].select();
+			taskBar.changed();
+		},
+		cycleProgramLeft: function(){
+			activeProgram--;
+			activeProgram = activeProgram % openPrograms.length;
+			openPrograms[activeProgram].select();
+			taskBar.changed();
+		}
+	});
+	taskBar.hydrate();
+	taskBar.setBindings();
+	return taskBar
 };
 
 // The active program should add items to this menu.
@@ -1146,13 +1234,7 @@ function testBindings() {
 		[18, "alt", function(){Terminal.toggleAltMode()}],
 		
 		// F6
-		[117, "normal", function(){PD.toggleDebugMode()}],
-		
-		// Right
-		[39, "altCtrl", function(){cycleProgramRight()}],
-		
-		// Left
-		[37, "altCtrl", function(){cycleProgramLeft()}]
+		[117, "normal", function(){PD.toggleDebugMode()}]
 	];
 	Terminal.setBindings();
 };

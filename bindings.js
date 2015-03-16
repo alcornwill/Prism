@@ -537,18 +537,16 @@ function greek() {
 	];
 };
 
+// any difference between window / document?
 window.onkeydown = checkKey;
 
 window.onkeyup = checkEm;
 
-// document.onmousemove = getMouseXY;
-
-// function getMouseXY(e) {
-	// var x = e.clientX;
-	// var y = e.clientY;
-	// debugText.printText("Coordinates: (" + x + "," + y + ")");
-	// debug.changed();
-// };
+function setMouseBinding(item) {
+	document.onmousemove = item.mouseClick;
+	document.onmousedown = item.mouseDown;
+	document.onmouseup = item.mouseUp;
+}
 
 // I think it slows everything down if you hold down a key. not sure what I can do about that...
 function checkKey(e) {
