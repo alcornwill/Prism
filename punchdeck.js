@@ -1,11 +1,4 @@
-// Easy way to change colour scheme?
-// I want it to be like, classic 70s shades of beige with touches of red and blue.
-// I also want to experiment with a white + primary colours scheme.
-
-// I have to draw a circle with Math stuff :^)
-
 // changing() wrapper that adds this.changed to functions?
-// also, I've been using Terminal.reDraw if I can't be bothered to figure out how to changed something, which is dumb.
 
 // I don't really understand what selected is. It's mainly just so that escape works.
 
@@ -13,37 +6,34 @@ function doNothing() {};
 
 var debug = {};
 
-// I am in shock and denial about how well this works.
-// You still can't have private static methods that access instance properties but it doesn't matter because you can have private instance methods that access instance properties and static properties.
-// Not sure how mixins effect performance but I don't think it's harmful. It's probably less harmful that using prototypes.
 var mixin = (function(){
 	function getDependencies(args) {
-		var mixingPot = args;
+		var cauldron = args;
 		for (var i=args.length-1; i>=0; i--) {
 			var dependencies = innerGetDependencies(args[i]);
 			for (var j=0; j<dependencies.length; j++)
-				if (mixingPot.indexOf(dependencies[j])==-1)
-					mixingPot.push(dependencies[j]);
+				if (cauldron.indexOf(dependencies[j])==-1)
+					cauldron.push(dependencies[j]);
 		}
-		return mixingPot;
+		return cauldron;
 	};
 	function innerGetDependencies(item) {
-		var mixingPot = [];
-		mixingPot.push(item);
+		var cauldron = [];
+		cauldron.push(item);
 		for (var i=item.dependencies.length-1; i>=0; i--)
-			if (mixingPot.indexOf(item.dependencies[i])==-1)
-				mixingPot = mixingPot.concat(innerGetDependencies(item.dependencies[i]));
-		return mixingPot;
+			if (cauldron.indexOf(item.dependencies[i])==-1)
+				cauldron = cauldron.concat(innerGetDependencies(item.dependencies[i]));
+		return cauldron;
 	};
 	return function() {
-		var mixingPot = getDependencies(Array.prototype.slice.call(arguments));
+		var cauldron = getDependencies(Array.prototype.slice.call(arguments));
 		var instance = {};
-		for (var i=mixingPot.length-1; i>=0; i--) {
-			var product = mixingPot[i](instance);
+		for (var i=cauldron.length-1; i>=0; i--) {
+			var product = cauldron[i](instance);
 			for(var key in product)
 				instance[key] = product[key];
 		}
-		instance.composition = mixingPot;
+		instance.composition = cauldron;
 		return instance;
 	};
 })();
@@ -85,7 +75,8 @@ var PD = (function() {
 		bringToFront(item.parent);
 	};
 	function select(item) {
-		// fk it i dnt evn care nymore
+		// fk it i dnt evn care nymore.
+		// I have no rules about when I use changed() and I probably use it too much. I should really just get Object.observe to work
 		item.changed();
 		item.setBindings();
 		bringToFront(item);
@@ -97,7 +88,6 @@ var PD = (function() {
 		pushRegion: function(region, pushTo) {
 			region.parent=pushTo;
 			pushTo.subRegion.push(region);
-			// I tried to use Object.observe once but it didn't work out.
 			// if (region.selectable) {
 			//    region.select();
 			// }
@@ -148,7 +138,7 @@ var PD = (function() {
 
 // This stuff should all be in the PD namespace but I cba
 
-var charRatio = {x: 9.5, y: 18.5};
+var charRatio = {x: 9.5, y: 18.5}; // pulled these numbers out of my ass
 var terminalOffset = {x: 0, y: 0};
 
 var framerate = 32;  // fixed 30fps
@@ -159,8 +149,9 @@ function TerminalModule(instance) {
 	
 	var lines=[];
 	var container={};
-	var pxWidth= 498;
-	var pxHeight= 496;
+	// wtf everything fucks up when you zoom in and out
+	var pxWidth= 500;
+	var pxHeight= 500;
 	function updateOffset(x, y) {
 		terminalOffset.x = Math.round(x/charRatio.x)+1;
 		terminalOffset.y = Math.round(y/charRatio.y);
@@ -172,9 +163,9 @@ function TerminalModule(instance) {
 		hasChanged: true,
 		bindings: [],
 	
-		// should be pxWidth/xxx instead of 500 and then round the actual div dimentions to be multiples of these constants.
-		width: Math.floor(500/charRatio.x),
-		height: Math.floor(500/charRatio.y),
+		// should be pxWidth/charRatio instead of 500 and then round the actual div dimentions to be multiples of these constants.
+		width: Math.round(pxWidth/charRatio.x),
+		height: Math.round(pxHeight/charRatio.y),
 		setBindings: function() {
 			PD.setBindings(that.bindings, PD.terminalKeys);
 		},
@@ -341,12 +332,17 @@ Terminal.buffer.set({ name: "TerminalBuffer", initChar: '\u2588' });
 Terminal.buffer.hydrate();
 
 // assumes that all windows are created fullscreen.
-function WindowRegionModule() {
+function WindowRegionModule(instance) {
+	var that = instance;
 	return WindowRegion = {
 		initChar: '\u2591',
 		width: Terminal.width,
 		height: Terminal.height-2,
-		y: 1
+		y: 1,
+		bindings: [
+			// need window management bindings here
+			[115, "normal", function(){that.kill()}]
+		]
 	};
 };
 
@@ -599,7 +595,7 @@ var EditableTextRegionModule = (function() {
 				var data = "";
 				for (var i=0; i<that.encodedBuffer.length; i++)
 					data+=that.encodedBuffer[i][0];
-				// nice if we had a printText...
+				// nice if we had a printText... will need it for copy / paste
 				debug.innerHTML = eval(data);
 			},
 			toggleCapsLock: (function() {
@@ -699,7 +695,7 @@ TextRegionModule.dependencies = [EncodedTextRegionModule];
 // Every button has a shortcut. I think the index should be chosen programmatically, and it might be easy. altBuffer should only be seen when the bindings are active.
 // Still doesn't support funky greek letters.
 // This should be an EncodedTextRegion but it can't be because it has a special update, so I could put the text inside the button and leave the button textless.
-// What I want is to be able to go "here's the text and the index, hydrate with it". But I can't even encode stuff from text with encoded text regions yet anyway, it would be a lot easier with token parsing, so I guess it's fine for now. 
+// What I want is to be able to go "here's the text and the index, hydrate with it". But I can't even encode stuff from text with encoded text regions yet anyway, so I guess it's fine for now. 
 function ButtonRegionModule(instance) {
 	var that = instance;
 	return ButtonRegion = {
@@ -739,7 +735,7 @@ function ScrollingRegionModule(instance) {
 			for (var x=Math.abs(toDraw.x); x<toDraw.width; x++) {
 				if (x-Math.abs(toDraw.x)>=that.width||y-Math.abs(toDraw.y)>=that.height) continue;
 				var element = toDraw.buffer[toDraw.getPointer(x, y)];
-				// it should only render what is in the bounds of that.width and that.height. Of course! It never occured to me to think of that as the thing that's moving! lol
+				// it should only render what is in the bounds of that.width and that.height.
 
 				toDraw.composition.indexOf(EncodedTextRegionModule)!=-1
 				? that.buffer[i]=element
@@ -749,7 +745,6 @@ function ScrollingRegionModule(instance) {
 		}
 		toDraw.hasChanged=false;
 	}
-	// Only does x atm
 	function drawRegion(toDraw) {
 		if (toDraw.hasChanged==true) {
 			toDraw.update();
@@ -758,7 +753,7 @@ function ScrollingRegionModule(instance) {
 		}
 	};
 	var ScrollingRegion = {
-		// You have to make the subRegion invisible (and I guess any sub-subRegions, but I won't get into that yet). This totally doesn't handle non-overflowing subRegions.
+		// You have to make the subRegion invisible. Only supports one subRegion. This totally doesn't handle non-overflowing subRegions.
 		update: function() {
 			var child = that.subRegion[2];
 			var scrollBarX = that.subRegion[0].subRegion[0];
@@ -822,7 +817,6 @@ ScrollingRegionModule.dependencies = [RegionModule];
 
 // Scripts //
 
-// crappy test
 function crappyTest() {
 	initLogin();
 	initDesktop();
@@ -843,7 +837,6 @@ function runProgram(program) {
 	program.parent.changed();
 };
 
-// Some of this stuff can go in WindowRegion / it's own Module. Rename WindowRegion to ProgramRegion?
 function Alpha() {
 	var alpha = mixin(WindowRegionModule);
 	alpha.set({
@@ -852,7 +845,6 @@ function Alpha() {
 			alpha.subRegion[0].select();
 			alpha.changed();
 		},
-		bindings: [[115, "normal", function(){alpha.kill()}]],
 		menuItems: [
 			{ 
 				name: "File", 
@@ -885,34 +877,26 @@ function Beta() {
 	beta.set({
 		icon: '\u0392',
 		colour: '#8A8A8A',
+		width: 30,
+		height: 16,
+		x: 15,
+		y: 5,
 		select: function() {
 			beta.subRegion[0].select();
 			beta.changed();
 		},
-		bindings: [[115, "normal", function(){beta.kill()}]],
 		menuItems: []
 	});
 	PD.pushRegion( (function() {
 		var betaText = mixin(EditableTextRegionModule);
 		betaText.set({
 			name: "BetaText",
-			width: 40,
-			height: 7,
+			width: 26,
+			height: 14,
 			x: 2,
-			y: 16
+			y: 1
 		});
 		return betaText;
-	})(), beta);
-	PD.pushRegion( (function() {
-		var betaEval = mixin(TextRegionModule);
-		betaEval.set({
-			name: "BetaText",
-			width: 40,
-			height: 12,
-			x: 2,
-			y: 2
-		});
-		return betaEval;
 	})(), beta);
 	runProgram(beta);
 };
@@ -922,11 +906,11 @@ function Gamma() {
 	gamma.set({
 		icon: '\u0393',
 		colour: '5B5E00',
+		width: 45,
 		select: function() {
 			gamma.subRegion[0].select();
 			gamma.changed();
 		},
-		bindings: [[115, "normal", function(){gamma.kill()}]],
 		menuItems: []
 	});
 	PD.pushRegion( (function() {
@@ -1022,7 +1006,6 @@ function initLogin() {
 
 var activeProgram = -1;
 
-// When we run any program, we need to give it a unique id. 
 var openPrograms = [];
 
 function initDesktop() {
@@ -1042,13 +1025,12 @@ var programs = [
 	{name: "Gamma", action: function(){Gamma()}, binding: 71}
 ];
 
-// returns array of {name: , bindings:} bindings.
 function createMetaMenuItems() {
 	var menuItems = [];
 	for (var i=0; i<programs.length; i++)
 		menuItems[i] = {
 			name: programs[i].name,
-			bindings: [[programs[i].binding, "alt", programs[i].action]]
+			bindings: [[programs[i].binding, "normal", programs[i].action]]
 		};
 	return menuItems;
 };
@@ -1079,12 +1061,9 @@ function createTaskBar() {
 		y: Terminal.height-1,
 		initChar: '\u2588',
 		update: function() {
-			// remove all buttons
 			taskBar.subRegion = [];
 			var totalWidth=0;
-			// for each open program
 			for (var i=0; i<openPrograms.length; i++) {
-				// create a icon (in a similar way to top bar)
 				var icon = mixin(TextRegionModule);
 				icon.width = 3;
 				icon.height = 1;
@@ -1094,7 +1073,6 @@ function createTaskBar() {
 				}
 				if (i==activeProgram) icon.colour = "red";
 				icon.printText('\u00a0' + openPrograms[i].icon + '\u00a0');
-				// and push the icon to taskBar
 				PD.pushRegion(icon, taskBar);
 			}
 		},
@@ -1120,7 +1098,6 @@ function createTaskBar() {
 	return taskBar
 };
 
-// The active program should add items to this menu.
 function createTopBar(name, menuItems) {
 	var menu = mixin(RegionModule);
 	menu.set({
@@ -1207,19 +1184,12 @@ function createMenu(name, menuItems, x, y) {
 };
 
 function testBindings() {
-	// F1
-	// should be Terminal.setActiveBuffer
+	// Need more buffers
 	Terminal.bindings = [
 		[112, "normal", function(){Terminal.activeBuffer=0; Terminal.subRegion[0].changed();}],
 		
 		// F2
 		[113, "normal", function(){Terminal.activeBuffer=1; Terminal.subRegion[1].changed();}],
-		
-		// F4
-		// can't have more than one instance
-		// Also this kills the menu item atm
-		// [115, "normal", function(){PD.kill("Alpha")}],
-		// [115, "normal", function(){PD.killActiveProgram()}],
 		
 		// F5
 		[116, "preventDefault", false],
